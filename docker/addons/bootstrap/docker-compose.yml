@@ -11,7 +11,7 @@ services:
   bootstrap-db:
     image: postgres:10.2-alpine
     container_name: mainflux-bootstrap-db
-    restart: on-failure
+    restart: always
     environment:
       POSTGRES_USER: ${MF_BOOTSTRAP_DB_USER}
       POSTGRES_PASSWORD: ${MF_BOOTSTRAP_DB_PASS}
@@ -22,11 +22,11 @@ services:
       - mainflux-bootstrap-db-volume:/var/lib/postgresql/data
 
   bootstrap:
-    image: mainflux/bootstrap:latest
+    image: mainflux/bootstrap:0.9.1
     container_name: mainflux-bootstrap
     depends_on:
       - bootstrap-db
-    restart: on-failure
+    restart: always
     ports:
       - ${MF_BOOTSTRAP_PORT}:${MF_BOOTSTRAP_PORT}
     environment:

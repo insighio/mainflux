@@ -20,11 +20,12 @@ services:
   influxdb:
     image: influxdb:1.6.4-alpine
     container_name: mainflux-influxdb
-    restart: on-failure
+    restart: always
     environment:
       INFLUXDB_DB: mainflux
       INFLUXDB_ADMIN_USER: mainflux
       INFLUXDB_ADMIN_PASSWORD: mainflux
+      #      INFLUXDB_BIND_ADDRESS: 127.0.0.1:8086
     networks:
       - docker_mainflux-base-net
     ports:
@@ -33,11 +34,11 @@ services:
       - mainflux-influxdb-volume:/var/lib/influxdb
 
   influxdb-writer:
-    image: mainflux/influxdb-writer:latest
+    image: mainflux/influxdb-writer:0.9.1
     container_name: mainflux-influxdb-writer
     depends_on:
       - influxdb
-    restart: on-failure
+    restart: always
     environment:
       MF_INFLUX_WRITER_LOG_LEVEL: debug
       MF_NATS_URL: ${MF_NATS_URL}
@@ -61,7 +62,7 @@ services:
     container_name: mainflux-grafana
     depends_on:
       - influxdb
-    restart: on-failure
+    restart: always
     ports:
       - ${MF_INFLUX_WRITER_GRAFANA_PORT}:${MF_GRAFANA_PORT}
     networks:

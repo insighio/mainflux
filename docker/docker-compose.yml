@@ -23,7 +23,7 @@ services:
   nginx:
     image: nginx:1.16.0-alpine
     container_name: mainflux-nginx
-    restart: on-failure
+    restart: always
     volumes:
       - ./nginx/nginx-${AUTH-key}.conf:/etc/nginx/nginx.conf.template
       - ./nginx/entrypoint.sh:/entrypoint.sh
@@ -45,14 +45,14 @@ services:
   nats:
     image: nats:1.3.0
     container_name: mainflux-nats
-    restart: on-failure
+    restart: always
     networks:
       - mainflux-base-net
 
   users-db:
     image: postgres:10.8-alpine
     container_name: mainflux-users-db
-    restart: on-failure
+    restart: always
     environment:
       POSTGRES_USER: ${MF_USERS_DB_USER}
       POSTGRES_PASSWORD: ${MF_USERS_DB_PASS}
@@ -63,13 +63,13 @@ services:
       - mainflux-users-db-volume:/var/lib/postgresql/data
 
   users:
-    image: mainflux/users:latest
+    image: mainflux/users:0.9.1
     container_name: mainflux-users
     depends_on:
       - users-db
     expose:
       - ${MF_USERS_GRPC_PORT}
-    restart: on-failure
+    restart: always
     environment:
       MF_USERS_LOG_LEVEL: ${MF_USERS_LOG_LEVEL}
       MF_USERS_DB_HOST: users-db
@@ -89,7 +89,7 @@ services:
   things-db:
     image: postgres:10.8-alpine
     container_name: mainflux-things-db
-    restart: on-failure
+    restart: always
     environment:
       POSTGRES_USER: ${MF_THINGS_DB_USER}
       POSTGRES_PASSWORD: ${MF_THINGS_DB_PASS}
@@ -102,19 +102,19 @@ services:
   things-redis:
     image: redis:5.0-alpine
     container_name: mainflux-things-redis
-    restart: on-failure
+    restart: always
     networks:
       - mainflux-base-net
     volumes:
       - mainflux-things-redis-volume:/data
 
   things:
-    image: mainflux/things:latest
+    image: mainflux/things:0.9.1
     container_name: mainflux-things
     depends_on:
       - things-db
       - users
-    restart: on-failure
+    restart: always
     environment:
       MF_THINGS_LOG_LEVEL: ${MF_THINGS_LOG_LEVEL}
       MF_THINGS_DB_HOST: things-db
@@ -146,11 +146,12 @@ services:
       - ${MF_JAEGER_CONFIGS}:${MF_JAEGER_CONFIGS}
     networks:
       - mainflux-base-net
+    restart: always
 
   normalizer:
-    image: mainflux/normalizer:latest
+    image: mainflux/normalizer:0.9.1
     container_name: mainflux-normalizer
-    restart: on-failure
+    restart: always
     depends_on:
       - nats
     environment:
@@ -163,12 +164,12 @@ services:
       - mainflux-base-net
 
   ws-adapter:
-    image: mainflux/ws:latest
+    image: mainflux/ws:0.9.1
     container_name: mainflux-ws
     depends_on:
       - things
       - nats
-    restart: on-failure
+    restart: always
     environment:
       MF_WS_ADAPTER_LOG_LEVEL: ${MF_WS_ADAPTER_LOG_LEVEL}
       MF_WS_ADAPTER_PORT: ${MF_WS_ADAPTER_PORT}
@@ -181,12 +182,12 @@ services:
       - mainflux-base-net
 
   http-adapter:
-    image: mainflux/http:latest
+    image: mainflux/http:0.9.1
     container_name: mainflux-http
     depends_on:
       - things
       - nats
-    restart: on-failure
+    restart: always
     environment:
       MF_HTTP_ADAPTER_LOG_LEVEL: debug
       MF_HTTP_ADAPTER_PORT: ${MF_HTTP_ADAPTER_PORT}
@@ -201,7 +202,7 @@ services:
   es-redis:
     image: redis:5.0-alpine
     container_name: mainflux-es-redis
-    restart: on-failure
+    restart: always
     networks:
       - mainflux-base-net
     volumes:
@@ -210,20 +211,20 @@ services:
   mqtt-redis:
     image: redis:5.0-alpine
     container_name: mainflux-mqtt-redis
-    restart: on-failure
+    restart: always
     networks:
       - mainflux-base-net
     volumes:
       - mainflux-mqtt-redis-volume:/data
 
   mqtt-adapter:
-    image: mainflux/mqtt:latest
+    image: mainflux/mqtt:0.9.1
     container_name: mainflux-mqtt
     depends_on:
       - things
       - nats
       - mqtt-redis
-    restart: on-failure
+    restart: always
     environment:
       MF_MQTT_ADAPTER_LOG_LEVEL: ${MF_MQTT_ADAPTER_LOG_LEVEL}
       MF_MQTT_INSTANCE_ID: mqtt-adapter-1
@@ -241,12 +242,12 @@ services:
       - mainflux-base-net
 
   coap-adapter:
-    image: mainflux/coap:latest
+    image: mainflux/coap:0.9.0
     container_name: mainflux-coap
     depends_on:
       - things
       - nats
-    restart: on-failure
+    restart: always
     environment:
       MF_COAP_ADAPTER_LOG_LEVEL: ${MF_COAP_ADAPTER_LOG_LEVEL}
       MF_COAP_ADAPTER_PORT: ${MF_COAP_ADAPTER_PORT}
@@ -259,9 +260,32 @@ services:
       - mainflux-base-net
 
   ui:
-    image: mainflux/ui:latest
+    image: insigh-io/ui:latest
+    container_name: insigh-io-ui
+    restart: always
+    ports:
+      - ${UI_INSIGHIO_PORT}:${UI_INSIGHIO_PORT}
+    networks:
+      - mainflux-base-net
+    environment:
+      UI_INSIGHIO_PORT: ${UI_INSIGHIO_PORT}
+
+
+  mf-rproxy:
+    image: insigh-io/mf-rproxy:latest
+    container_name: insigh-io-mf-rproxy
+    restart: always
+    ports:
+      - ${RPROXY_PORT}:${RPROXY_PORT}
+    networks:
+      - mainflux-base-net
+    environment:
+      RPROXY_PORT: ${RPROXY_PORT}
+
+  mainflux-ui:
+    image: mainflux/ui:0.9.1
     container_name: mainflux-ui
-    restart: on-failure
+    restart: always
     ports:
       - ${MF_UI_PORT}:${MF_UI_PORT}
     networks:
