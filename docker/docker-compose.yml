@@ -281,6 +281,10 @@ services:
       - mainflux-base-net
     environment:
       RPROXY_PORT: ${RPROXY_PORT}
+      VUE_APP_API_IP: "localhost"
+      VUE_APP_DB_USER: "insighio-r"
+      VUE_APP_DB_PASS: "insighio-r"
+
 
   mainflux-ui:
     image: mainflux/ui:0.9.1
