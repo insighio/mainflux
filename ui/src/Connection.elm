@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: Apache-2.0
 
 
-port module Connection exposing (Model, Msg(..), initial, update, view)
+module Connection exposing (Model, Msg(..), initial, update, view)
 
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
