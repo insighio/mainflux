@@ -242,7 +242,7 @@ services:
       - mainflux-base-net
 
   coap-adapter:
-    image: mainflux/coap:0.9.0
+    image: mainflux/coap:0.10.0
     container_name: mainflux-coap
     depends_on:
       - things
