@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package api
 
@@ -110,9 +106,10 @@ func decodeRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
-	msg := mainflux.RawMessage{
+	ct := r.Header.Get("Content-Type")
+	msg := mainflux.Message{
 		Protocol:    protocol,
-		ContentType: r.Header.Get("Content-Type"),
+		ContentType: ct,
 		Channel:     chanID,
 		Subtopic:    subtopic,
 		Payload:     payload,

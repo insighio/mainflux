@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package http
 
@@ -27,12 +23,12 @@ func (req identifyReq) validate() error {
 	return nil
 }
 
-type canAccessReq struct {
+type canAccessByKeyReq struct {
 	chanID string
 	Token  string `json:"token"`
 }
 
-func (req canAccessReq) validate() error {
+func (req canAccessByKeyReq) validate() error {
 	if req.Token == "" || req.chanID == "" {
 		return things.ErrUnauthorizedAccess
 	}

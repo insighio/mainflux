@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package mocks
 
@@ -23,43 +19,45 @@ type mainfluxThings struct {
 	counter     uint64
 	things      map[string]things.Thing
 	channels    map[string]things.Channel
-	users       mainflux.UsersServiceClient
+	auth        mainflux.AuthNServiceClient
 	connections map[string][]string
 }
 
 // NewThingsService returns Mainflux Things service mock.
 // Only methods used by SDK are mocked.
-func NewThingsService(things map[string]things.Thing, channels map[string]things.Channel, users mainflux.UsersServiceClient) things.Service {
+func NewThingsService(things map[string]things.Thing, channels map[string]things.Channel, authn mainflux.AuthNServiceClient) things.Service {
 	return &mainfluxThings{
 		things:      things,
 		channels:    channels,
-		users:       users,
+		auth:        authn,
 		connections: make(map[string][]string),
 	}
 }
 
-func (svc *mainfluxThings) AddThing(_ context.Context, owner string, thing things.Thing) (things.Thing, error) {
+func (svc *mainfluxThings) CreateThings(_ context.Context, owner string, ths ...things.Thing) ([]things.Thing, error) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	userID, err := svc.users.Identify(context.Background(), &mainflux.Token{Value: owner})
+	userID, err := svc.auth.Identify(context.Background(), &mainflux.Token{Value: owner})
 	if err != nil {
-		return things.Thing{}, things.ErrUnauthorizedAccess
+		return []things.Thing{}, things.ErrUnauthorizedAccess
+	}
+	for i := range ths {
+		svc.counter++
+		ths[i].Owner = userID.Value
+		ths[i].ID = strconv.FormatUint(svc.counter, 10)
+		ths[i].Key = ths[i].ID
+		svc.things[ths[i].ID] = ths[i]
 	}
 
-	svc.counter++
-	thing.Owner = userID.Value
-	thing.ID = strconv.FormatUint(svc.counter, 10)
-	thing.Key = thing.ID
-	svc.things[thing.ID] = thing
-	return thing, nil
+	return ths, nil
 }
 
 func (svc *mainfluxThings) ViewThing(_ context.Context, owner, id string) (things.Thing, error) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	userID, err := svc.users.Identify(context.Background(), &mainflux.Token{Value: owner})
+	userID, err := svc.auth.Identify(context.Background(), &mainflux.Token{Value: owner})
 	if err != nil {
 		return things.Thing{}, things.ErrUnauthorizedAccess
 	}
@@ -72,20 +70,23 @@ func (svc *mainfluxThings) ViewThing(_ context.Context, owner, id string) (thing
 	return things.Thing{}, things.ErrNotFound
 }
 
-func (svc *mainfluxThings) Connect(_ context.Context, owner, chanID, thingID string) error {
+func (svc *mainfluxThings) Connect(_ context.Context, owner string, chIDs, thIDs []string) error {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	userID, err := svc.users.Identify(context.Background(), &mainflux.Token{Value: owner})
+	userID, err := svc.auth.Identify(context.Background(), &mainflux.Token{Value: owner})
 	if err != nil {
 		return things.ErrUnauthorizedAccess
 	}
-
-	if svc.channels[chanID].Owner != userID.Value {
-		return things.ErrNotFound
+	for _, chID := range chIDs {
+		if svc.channels[chID].Owner != userID.Value {
+			return things.ErrUnauthorizedAccess
+		}
+		for _, thID := range thIDs {
+			svc.connections[chID] = append(svc.connections[chID], thID)
+		}
 	}
 
-	svc.connections[chanID] = append(svc.connections[chanID], thingID)
 	return nil
 }
 
@@ -93,7 +94,7 @@ func (svc *mainfluxThings) Disconnect(_ context.Context, owner, chanID, thingID 
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	userID, err := svc.users.Identify(context.Background(), &mainflux.Token{Value: owner})
+	userID, err := svc.auth.Identify(context.Background(), &mainflux.Token{Value: owner})
 	if err != nil || svc.channels[chanID].Owner != userID.Value {
 		return things.ErrUnauthorizedAccess
 	}
@@ -125,7 +126,7 @@ func (svc *mainfluxThings) RemoveThing(_ context.Context, owner, id string) erro
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	userID, err := svc.users.Identify(context.Background(), &mainflux.Token{Value: owner})
+	userID, err := svc.auth.Identify(context.Background(), &mainflux.Token{Value: owner})
 	if err != nil {
 		return things.ErrUnauthorizedAccess
 	}
@@ -137,13 +138,13 @@ func (svc *mainfluxThings) RemoveThing(_ context.Context, owner, id string) erro
 	delete(svc.things, id)
 	conns := make(map[string][]string)
 	for k, v := range svc.connections {
-		idx := findIndex(v, id)
-		if idx != -1 {
+		i := findIndex(v, id)
+		if i != -1 {
 			var tmp []string
-			if idx != len(v)-2 {
-				tmp = v[idx+1:]
+			if i != len(v)-2 {
+				tmp = v[i+1:]
 			}
-			conns[k] = append(v[:idx], tmp...)
+			conns[k] = append(v[:i], tmp...)
 		}
 	}
 
@@ -166,7 +167,7 @@ func (svc *mainfluxThings) UpdateKey(context.Context, string, string, string) er
 	panic("not implemented")
 }
 
-func (svc *mainfluxThings) ListThings(context.Context, string, uint64, uint64, string) (things.ThingsPage, error) {
+func (svc *mainfluxThings) ListThings(context.Context, string, uint64, uint64, string, things.Metadata) (things.ThingsPage, error) {
 	panic("not implemented")
 }
 
@@ -178,15 +179,29 @@ func (svc *mainfluxThings) ListThingsByChannel(context.Context, string, string, 
 	panic("not implemented")
 }
 
-func (svc *mainfluxThings) CreateChannel(context.Context, string, things.Channel) (things.Channel, error) {
-	panic("not implemented")
+func (svc *mainfluxThings) CreateChannels(_ context.Context, owner string, chs ...things.Channel) ([]things.Channel, error) {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	userID, err := svc.auth.Identify(context.Background(), &mainflux.Token{Value: owner})
+	if err != nil {
+		return []things.Channel{}, things.ErrUnauthorizedAccess
+	}
+	for i := range chs {
+		svc.counter++
+		chs[i].Owner = userID.Value
+		chs[i].ID = strconv.FormatUint(svc.counter, 10)
+		svc.channels[chs[i].ID] = chs[i]
+	}
+
+	return chs, nil
 }
 
 func (svc *mainfluxThings) UpdateChannel(context.Context, string, things.Channel) error {
 	panic("not implemented")
 }
 
-func (svc *mainfluxThings) ListChannels(context.Context, string, uint64, uint64, string) (things.ChannelsPage, error) {
+func (svc *mainfluxThings) ListChannels(context.Context, string, uint64, uint64, string, things.Metadata) (things.ChannelsPage, error) {
 	panic("not implemented")
 }
 
@@ -194,7 +209,7 @@ func (svc *mainfluxThings) RemoveChannel(context.Context, string, string) error 
 	panic("not implemented")
 }
 
-func (svc *mainfluxThings) CanAccess(context.Context, string, string) (string, error) {
+func (svc *mainfluxThings) CanAccessByKey(context.Context, string, string) (string, error) {
 	panic("not implemented")
 }
 

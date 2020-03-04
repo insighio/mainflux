@@ -1,16 +1,12 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package readers
 
 import (
 	"errors"
 
-	"github.com/mainflux/mainflux"
+	"github.com/mainflux/mainflux/transformers/senml"
 )
 
 // ErrNotFound indicates that requested entity doesn't exist.
@@ -29,5 +25,5 @@ type MessagesPage struct {
 	Total    uint64
 	Offset   uint64
 	Limit    uint64
-	Messages []mainflux.Message
+	Messages []senml.Message
 }

@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package http_test
 
@@ -73,7 +69,7 @@ func (tr testRequest) make() (*http.Response, error) {
 }
 
 func newService(tokens map[string]string) things.Service {
-	users := mocks.NewUsersService(tokens)
+	auth := mocks.NewAuthService(tokens)
 	conns := make(chan mocks.Connection)
 	thingsRepo := mocks.NewThingRepository(conns)
 	channelsRepo := mocks.NewChannelRepository(thingsRepo, conns)
@@ -81,7 +77,7 @@ func newService(tokens map[string]string) things.Service {
 	thingCache := mocks.NewThingCache()
 	idp := mocks.NewIdentityProvider()
 
-	return things.New(users, thingsRepo, channelsRepo, chanCache, thingCache, idp)
+	return things.New(auth, thingsRepo, channelsRepo, chanCache, thingCache, idp)
 }
 
 func newServer(svc things.Service) *httptest.Server {
@@ -94,7 +90,7 @@ func toJSON(data interface{}) string {
 	return string(jsonData)
 }
 
-func TestAddThing(t *testing.T) {
+func TestCreateThing(t *testing.T) {
 	svc := newService(map[string]string{token: email})
 	ts := newServer(svc)
 	defer ts.Close()
@@ -206,13 +202,122 @@ func TestAddThing(t *testing.T) {
 	}
 }
 
+func TestCreateThings(t *testing.T) {
+	svc := newService(map[string]string{token: email})
+	ts := newServer(svc)
+	defer ts.Close()
+
+	data := `[{"name": "1", "key": "1"}, {"name": "2", "key": "2"}]`
+	invalidData := fmt.Sprintf(`[{"name": "%s", "key": "10"}]`, invalidName)
+
+	cases := []struct {
+		desc        string
+		data        string
+		contentType string
+		auth        string
+		status      int
+		response    string
+	}{
+		{
+			desc:        "create valid things",
+			data:        data,
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusCreated,
+			response:    "",
+		},
+		{
+			desc:        "create things with empty request",
+			data:        "",
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+		{
+			desc:        "create thing with invalid request format",
+			data:        "}",
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+		{
+			desc:        "create thing with invalid name",
+			data:        invalidData,
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+		{
+			desc:        "create things with empty JSON array",
+			data:        "[]",
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+		{
+			desc:        "create thing with existing key",
+			data:        data,
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusUnprocessableEntity,
+			response:    "",
+		},
+		{
+			desc:        "create thing with invalid auth token",
+			data:        data,
+			contentType: contentType,
+			auth:        wrongValue,
+			status:      http.StatusForbidden,
+			response:    "",
+		},
+		{
+			desc:        "create thing with empty auth token",
+			data:        data,
+			contentType: contentType,
+			auth:        "",
+			status:      http.StatusForbidden,
+			response:    "",
+		},
+		{
+			desc:        "create thing without content type",
+			data:        data,
+			contentType: "",
+			auth:        token,
+			status:      http.StatusUnsupportedMediaType,
+			response:    "",
+		},
+	}
+
+	for _, tc := range cases {
+		req := testRequest{
+			client:      ts.Client(),
+			method:      http.MethodPost,
+			url:         fmt.Sprintf("%s/things/bulk", ts.URL),
+			contentType: tc.contentType,
+			token:       tc.auth,
+			body:        strings.NewReader(tc.data),
+		}
+		res, err := req.make()
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+
+		location := res.Header.Get("Location")
+		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
+		assert.Equal(t, tc.response, location, fmt.Sprintf("%s: expected response %s got %s", tc.desc, tc.response, location))
+	}
+}
+
 func TestUpdateThing(t *testing.T) {
 	svc := newService(map[string]string{token: email})
 	ts := newServer(svc)
 	defer ts.Close()
 
 	data := toJSON(thing)
-	sth, _ := svc.AddThing(context.Background(), token, thing)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	sth := sths[0]
 
 	th := thing
 	th.Name = invalidName
@@ -329,7 +434,8 @@ func TestUpdateKey(t *testing.T) {
 
 	th := thing
 	th.Key = "key"
-	sth, _ := svc.AddThing(context.Background(), token, th)
+	sths, _ := svc.CreateThings(context.Background(), token, th)
+	sth := sths[0]
 
 	sth.Key = "new-key"
 	data := toJSON(sth)
@@ -447,8 +553,9 @@ func TestViewThing(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sth, err := svc.AddThing(context.Background(), token, thing)
+	sths, err := svc.CreateThings(context.Background(), token, thing)
 	require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
+	sth := sths[0]
 
 	thres := thingRes{
 		ID:       sth.ID,
@@ -526,8 +633,9 @@ func TestListThings(t *testing.T) {
 
 	data := []thingRes{}
 	for i := 0; i < 100; i++ {
-		sth, err := svc.AddThing(context.Background(), token, thing)
+		sths, err := svc.CreateThings(context.Background(), token, thing)
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
+		sth := sths[0]
 		thres := thingRes{
 			ID:       sth.ID,
 			Name:     sth.Name,
@@ -673,14 +781,16 @@ func TestListThingsByChannel(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sch, err := svc.CreateChannel(context.Background(), token, channel)
+	schs, err := svc.CreateChannels(context.Background(), token, channel)
 	require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
+	sch := schs[0]
 
 	data := []thingRes{}
 	for i := 0; i < 101; i++ {
-		sth, err := svc.AddThing(context.Background(), token, thing)
+		sths, err := svc.CreateThings(context.Background(), token, thing)
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
-		err = svc.Connect(context.Background(), token, sch.ID, sth.ID)
+		sth := sths[0]
+		err = svc.Connect(context.Background(), token, []string{sch.ID}, []string{sth.ID})
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
 
 		thres := thingRes{
@@ -824,7 +934,8 @@ func TestRemoveThing(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sth, _ := svc.AddThing(context.Background(), token, thing)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	sth := sths[0]
 
 	cases := []struct {
 		desc   string
@@ -974,12 +1085,112 @@ func TestCreateChannel(t *testing.T) {
 	}
 }
 
+func TestCreateChannels(t *testing.T) {
+	svc := newService(map[string]string{token: email})
+	ts := newServer(svc)
+	defer ts.Close()
+
+	data := `[{"name": "1"}, {"name": "2"}]`
+	invalidData := fmt.Sprintf(`[{"name": "%s"}]`, invalidName)
+
+	cases := []struct {
+		desc        string
+		data        string
+		contentType string
+		auth        string
+		status      int
+		response    string
+	}{
+		{
+			desc:        "create valid channels",
+			data:        data,
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusCreated,
+			response:    "",
+		},
+		{
+			desc:        "create channel with empty request",
+			data:        "",
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+		{
+			desc:        "create channels with empty JSON",
+			data:        "[]",
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+		{
+			desc:        "create channel with invalid auth token",
+			data:        data,
+			contentType: contentType,
+			auth:        wrongValue,
+			status:      http.StatusForbidden,
+			response:    "",
+		},
+		{
+			desc:        "create channel with empty auth token",
+			data:        data,
+			contentType: contentType,
+			auth:        "",
+			status:      http.StatusForbidden,
+			response:    "",
+		},
+		{
+			desc:     "create channel with invalid request format",
+			data:     "}",
+			auth:     token,
+			status:   http.StatusUnsupportedMediaType,
+			response: "",
+		},
+		{
+			desc:        "create channel without content type",
+			data:        data,
+			contentType: "",
+			auth:        token,
+			status:      http.StatusUnsupportedMediaType,
+			response:    "",
+		},
+		{
+			desc:        "create channel with invalid name",
+			data:        invalidData,
+			contentType: contentType,
+			auth:        token,
+			status:      http.StatusBadRequest,
+			response:    "",
+		},
+	}
+
+	for _, tc := range cases {
+		req := testRequest{
+			client:      ts.Client(),
+			method:      http.MethodPost,
+			url:         fmt.Sprintf("%s/channels/bulk", ts.URL),
+			contentType: tc.contentType,
+			token:       tc.auth,
+			body:        strings.NewReader(tc.data),
+		}
+		res, err := req.make()
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+
+		location := res.Header.Get("Location")
+		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
+		assert.Equal(t, tc.response, location, fmt.Sprintf("%s: expected response %s got %s", tc.desc, tc.response, location))
+	}
+}
+
 func TestUpdateChannel(t *testing.T) {
 	svc := newService(map[string]string{token: email})
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sch, _ := svc.CreateChannel(context.Background(), token, channel)
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	sch := schs[0]
 
 	ch := channel
 	ch.Name = "updated_channel"
@@ -1097,10 +1308,12 @@ func TestViewChannel(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sch, _ := svc.CreateChannel(context.Background(), token, channel)
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	sch := schs[0]
 
-	sth, _ := svc.AddThing(context.Background(), token, thing)
-	svc.Connect(context.Background(), token, sch.ID, sth.ID)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	sth := sths[0]
+	svc.Connect(context.Background(), token, []string{sch.ID}, []string{sth.ID})
 
 	chres := channelRes{
 		ID:       sch.ID,
@@ -1177,11 +1390,13 @@ func TestListChannels(t *testing.T) {
 
 	channels := []channelRes{}
 	for i := 0; i < 101; i++ {
-		sch, err := svc.CreateChannel(context.Background(), token, channel)
+		schs, err := svc.CreateChannels(context.Background(), token, channel)
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
-		sth, err := svc.AddThing(context.Background(), token, thing)
+		sch := schs[0]
+		sths, err := svc.CreateThings(context.Background(), token, thing)
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
-		svc.Connect(context.Background(), token, sch.ID, sth.ID)
+		sth := sths[0]
+		svc.Connect(context.Background(), token, []string{sch.ID}, []string{sth.ID})
 
 		chres := channelRes{
 			ID:       sch.ID,
@@ -1327,14 +1542,16 @@ func TestListChannelsByThing(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sth, err := svc.AddThing(context.Background(), token, thing)
+	sths, err := svc.CreateThings(context.Background(), token, thing)
 	require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
+	sth := sths[0]
 
 	channels := []channelRes{}
 	for i := 0; i < 101; i++ {
-		sch, err := svc.CreateChannel(context.Background(), token, channel)
+		schs, err := svc.CreateChannels(context.Background(), token, channel)
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
-		err = svc.Connect(context.Background(), token, sch.ID, sth.ID)
+		sch := schs[0]
+		err = svc.Connect(context.Background(), token, []string{sch.ID}, []string{sth.ID})
 		require.Nil(t, err, fmt.Sprintf("unexpected error: %s", err))
 
 		chres := channelRes{
@@ -1474,7 +1691,8 @@ func TestRemoveChannel(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sch, _ := svc.CreateChannel(context.Background(), token, channel)
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	sch := schs[0]
 
 	cases := []struct {
 		desc   string
@@ -1537,9 +1755,12 @@ func TestConnect(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	ath, _ := svc.AddThing(context.Background(), token, thing)
-	ach, _ := svc.CreateChannel(context.Background(), token, channel)
-	bch, _ := svc.CreateChannel(context.Background(), otherToken, channel)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	ath := sths[0]
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	ach := schs[0]
+	schs, _ = svc.CreateChannels(context.Background(), otherToken, channel)
+	bch := schs[0]
 
 	cases := []struct {
 		desc    string
@@ -1619,6 +1840,168 @@ func TestConnect(t *testing.T) {
 	}
 }
 
+func TestCreateConnections(t *testing.T) {
+	otherToken := "other_token"
+	otherEmail := "other_user@example.com"
+	svc := newService(map[string]string{
+		token:      email,
+		otherToken: otherEmail,
+	})
+	ts := newServer(svc)
+	defer ts.Close()
+
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	ths := []string{}
+	for _, th := range sths {
+		ths = append(ths, th.ID)
+	}
+
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	achs := []string{}
+	for _, ch := range schs {
+		achs = append(achs, ch.ID)
+	}
+	schs, _ = svc.CreateChannels(context.Background(), otherToken, channel)
+	bchs := []string{}
+	for _, ch := range schs {
+		bchs = append(bchs, ch.ID)
+	}
+
+	cases := []struct {
+		desc        string
+		channelIDs  []string
+		thingIDs    []string
+		auth        string
+		contentType string
+		body        string
+		status      int
+	}{
+		{
+			desc:        "connect existing things to existing channels",
+			channelIDs:  achs,
+			thingIDs:    ths,
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusOK,
+		},
+		{
+			desc:        "connect existing things to non-existent channels",
+			channelIDs:  []string{strconv.FormatUint(wrongID, 10)},
+			thingIDs:    ths,
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusNotFound,
+		},
+		{
+			desc:        "connect non-existing things to existing channels",
+			channelIDs:  achs,
+			thingIDs:    []string{strconv.FormatUint(wrongID, 10)},
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusNotFound,
+		},
+		{
+			desc:        "connect existing things to channel with invalid id",
+			channelIDs:  []string{"invalid"},
+			thingIDs:    ths,
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusNotFound,
+		},
+		{
+			desc:        "connect things with invalid id to existing channels",
+			channelIDs:  achs,
+			thingIDs:    []string{"invalid"},
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusNotFound,
+		},
+		{
+			desc:        "connect existing things to empty channel ids",
+			channelIDs:  []string{""},
+			thingIDs:    ths,
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusBadRequest,
+		},
+		{
+			desc:        "connect empty things id to existing channels",
+			channelIDs:  achs,
+			thingIDs:    []string{""},
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusBadRequest,
+		},
+		{
+			desc:        "connect existing things to existing channels with invalid token",
+			channelIDs:  achs,
+			thingIDs:    ths,
+			auth:        wrongValue,
+			contentType: contentType,
+			status:      http.StatusForbidden,
+		},
+		{
+			desc:        "connect existing things to existing channels with empty token",
+			channelIDs:  achs,
+			thingIDs:    ths,
+			auth:        "",
+			contentType: contentType,
+			status:      http.StatusForbidden,
+		},
+		{
+			desc:        "connect things from owner to channels of other user",
+			channelIDs:  bchs,
+			thingIDs:    ths,
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusNotFound,
+		},
+		{
+			desc:        "invalid content type",
+			channelIDs:  bchs,
+			thingIDs:    ths,
+			auth:        token,
+			contentType: "invalid",
+			status:      http.StatusUnsupportedMediaType,
+		},
+		{
+			desc:        "invalid JSON",
+			auth:        token,
+			contentType: contentType,
+			status:      http.StatusBadRequest,
+			body:        "{",
+		},
+	}
+
+	for _, tc := range cases {
+		data := struct {
+			ChannelIDs []string `json:"channel_ids"`
+			ThingIDs   []string `json:"thing_ids"`
+		}{
+			tc.channelIDs,
+			tc.thingIDs,
+		}
+		body := toJSON(data)
+
+		if tc.body != "" {
+			body = tc.body
+		}
+
+		req := testRequest{
+			client:      ts.Client(),
+			method:      http.MethodPost,
+			url:         fmt.Sprintf("%s/connect", ts.URL),
+			contentType: tc.contentType,
+			token:       tc.auth,
+			body:        strings.NewReader(body),
+		}
+
+		res, err := req.make()
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
+	}
+}
+
 func TestDisconnnect(t *testing.T) {
 	otherToken := "other_token"
 	otherEmail := "other_user@example.com"
@@ -1629,10 +2012,13 @@ func TestDisconnnect(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	ath, _ := svc.AddThing(context.Background(), token, thing)
-	ach, _ := svc.CreateChannel(context.Background(), token, channel)
-	svc.Connect(context.Background(), token, ach.ID, ath.ID)
-	bch, _ := svc.CreateChannel(context.Background(), otherToken, channel)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	ath := sths[0]
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	ach := schs[0]
+	svc.Connect(context.Background(), token, []string{ach.ID}, []string{ath.ID})
+	schs, _ = svc.CreateChannels(context.Background(), otherToken, channel)
+	bch := schs[0]
 
 	cases := []struct {
 		desc    string
@@ -1724,6 +2110,11 @@ type thingRes struct {
 	Name     string                 `json:"name,omitempty"`
 	Key      string                 `json:"key"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+type thingsRes struct {
+	Things  []things.Thing
+	created bool
 }
 
 type channelRes struct {

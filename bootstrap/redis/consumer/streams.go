@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package consumer
 
@@ -31,8 +27,8 @@ const (
 	exists = "BUSYGROUP Consumer Group name already exists"
 )
 
-// EventStore represents event source for things and channels provisioning.
-type EventStore interface {
+// Subscriber represents event source for things and channels provisioning.
+type Subscriber interface {
 	// Subscribes to given subject and receives events.
 	Subscribe(string) error
 }
@@ -45,7 +41,7 @@ type eventStore struct {
 }
 
 // NewEventStore returns new event store instance.
-func NewEventStore(svc bootstrap.Service, client *redis.Client, consumer string, log logger.Logger) EventStore {
+func NewEventStore(svc bootstrap.Service, client *redis.Client, consumer string, log logger.Logger) Subscriber {
 	return eventStore{
 		svc:      svc,
 		client:   client,

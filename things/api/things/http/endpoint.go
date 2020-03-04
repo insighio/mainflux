@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package http
 
@@ -14,28 +10,70 @@ import (
 	"github.com/mainflux/mainflux/things"
 )
 
-func addThingEndpoint(svc things.Service) endpoint.Endpoint {
+func createThingEndpoint(svc things.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(addThingReq)
+		req := request.(createThingReq)
 
 		if err := req.validate(); err != nil {
 			return nil, err
 		}
 
-		thing := things.Thing{
+		th := things.Thing{
 			Key:      req.Key,
 			Name:     req.Name,
 			Metadata: req.Metadata,
 		}
-		saved, err := svc.AddThing(ctx, req.token, thing)
+		saved, err := svc.CreateThings(ctx, req.token, th)
 		if err != nil {
 			return nil, err
 		}
 
 		res := thingRes{
-			id:      saved.ID,
+			ID:      saved[0].ID,
 			created: true,
 		}
+
+		return res, nil
+	}
+}
+
+func createThingsEndpoint(svc things.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(createThingsReq)
+
+		if err := req.validate(); err != nil {
+			return nil, err
+		}
+
+		ths := []things.Thing{}
+		for _, tReq := range req.Things {
+			th := things.Thing{
+				Name: tReq.Name,
+				Key:  tReq.Key,
+			}
+			ths = append(ths, th)
+		}
+
+		saved, err := svc.CreateThings(ctx, req.token, ths...)
+		if err != nil {
+			return nil, err
+		}
+
+		res := thingsRes{
+			Things:  []thingRes{},
+			created: true,
+		}
+
+		for _, th := range saved {
+			tRes := thingRes{
+				ID:       th.ID,
+				Name:     th.Name,
+				Key:      th.Key,
+				Metadata: th.Metadata,
+			}
+			res.Things = append(res.Things, tRes)
+		}
+
 		return res, nil
 	}
 }
@@ -58,7 +96,7 @@ func updateThingEndpoint(svc things.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		res := thingRes{id: req.id, created: false}
+		res := thingRes{ID: req.id, created: false}
 		return res, nil
 	}
 }
@@ -75,7 +113,7 @@ func updateKeyEndpoint(svc things.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		res := thingRes{id: req.id, created: false}
+		res := thingRes{ID: req.id, created: false}
 		return res, nil
 	}
 }
@@ -112,7 +150,7 @@ func listThingsEndpoint(svc things.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		page, err := svc.ListThings(ctx, req.token, req.offset, req.limit, req.name)
+		page, err := svc.ListThings(ctx, req.token, req.offset, req.limit, req.name, req.metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -205,16 +243,56 @@ func createChannelEndpoint(svc things.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		channel := things.Channel{Name: req.Name, Metadata: req.Metadata}
-		saved, err := svc.CreateChannel(ctx, req.token, channel)
+		ch := things.Channel{Name: req.Name, Metadata: req.Metadata}
+		saved, err := svc.CreateChannels(ctx, req.token, ch)
 		if err != nil {
 			return nil, err
 		}
 
 		res := channelRes{
-			id:      saved.ID,
+			ID:      saved[0].ID,
 			created: true,
 		}
+		return res, nil
+	}
+}
+
+func createChannelsEndpoint(svc things.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(createChannelsReq)
+
+		if err := req.validate(); err != nil {
+			return nil, err
+		}
+
+		chs := []things.Channel{}
+		for _, cReq := range req.Channels {
+			ch := things.Channel{
+				Metadata: cReq.Metadata,
+				Name:     cReq.Name,
+			}
+			chs = append(chs, ch)
+		}
+
+		saved, err := svc.CreateChannels(ctx, req.token, chs...)
+		if err != nil {
+			return nil, err
+		}
+
+		res := channelsRes{
+			Channels: []channelRes{},
+			created:  true,
+		}
+
+		for _, ch := range saved {
+			cRes := channelRes{
+				ID:       ch.ID,
+				Name:     ch.Name,
+				Metadata: ch.Metadata,
+			}
+			res.Channels = append(res.Channels, cRes)
+		}
+
 		return res, nil
 	}
 }
@@ -237,7 +315,7 @@ func updateChannelEndpoint(svc things.Service) endpoint.Endpoint {
 		}
 
 		res := channelRes{
-			id:      req.id,
+			ID:      req.id,
 			created: false,
 		}
 		return res, nil
@@ -276,7 +354,7 @@ func listChannelsEndpoint(svc things.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		page, err := svc.ListChannels(ctx, req.token, req.offset, req.limit, req.name)
+		page, err := svc.ListChannels(ctx, req.token, req.offset, req.limit, req.name, req.metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -367,11 +445,27 @@ func connectEndpoint(svc things.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		if err := svc.Connect(ctx, cr.token, cr.chanID, cr.thingID); err != nil {
+		if err := svc.Connect(ctx, cr.token, []string{cr.chanID}, []string{cr.thingID}); err != nil {
 			return nil, err
 		}
 
 		return connectionRes{}, nil
+	}
+}
+
+func createConnectionsEndpoint(svc things.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		cr := request.(createConnectionsReq)
+
+		if err := cr.validate(); err != nil {
+			return nil, err
+		}
+
+		if err := svc.Connect(ctx, cr.token, cr.ChannelIDs, cr.ThingIDs); err != nil {
+			return nil, err
+		}
+
+		return createConnectionsRes{}, nil
 	}
 }
 

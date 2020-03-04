@@ -1,21 +1,16 @@
-###
-# Copyright (c) 2015-2017 Mainflux
-#
-# Mainflux is licensed under an Apache license, version 2.0 license.
-# All rights not explicitly granted in the Apache license, version 2.0 are reserved.
-# See the included LICENSE file for more details.
-###
+# Copyright (c) Mainflux
+# SPDX-License-Identifier: Apache-2.0
 
-version: "3"
+version: "3.7"
 
 networks:
   mainflux-base-net:
     driver: bridge
 
 volumes:
+  mainflux-authn-db-volume:
   mainflux-users-db-volume:
   mainflux-things-db-volume:
-  mainflux-mqtt-redis-volume:
   mainflux-things-redis-volume:
   mainflux-es-redis-volume:
 
@@ -27,6 +22,7 @@ services:
     volumes:
       - ./nginx/nginx-${AUTH-key}.conf:/etc/nginx/nginx.conf.template
       - ./nginx/entrypoint.sh:/entrypoint.sh
+      - ./nginx/snippets:/etc/nginx/snippets
       - ./ssl/authorization.js:/etc/nginx/authorization.js
       - ./ssl/certs/mainflux-server.crt:/etc/ssl/certs/mainflux-server.crt
       - ./ssl/certs/ca.crt:/etc/ssl/certs/ca.crt
@@ -36,16 +32,60 @@ services:
       - ${MF_NGINX_HTTP_PORT}:${MF_NGINX_HTTP_PORT}
       - ${MF_NGINX_SSL_PORT}:${MF_NGINX_SSL_PORT}
       - ${MF_NGINX_MQTT_PORT}:${MF_NGINX_MQTT_PORT}
+      - ${MF_NGINX_MQTTS_PORT}:${MF_NGINX_MQTTS_PORT}
     networks:
       - mainflux-base-net
-    environment:
-      MF_UI_PORT: ${MF_UI_PORT}
+    env_file:
+      - ../.env
     command: /entrypoint.sh
+    depends_on:
+      - things
+      - users
+      - http-adapter
+      - ws-adapter
 
   nats:
     image: nats:1.3.0
     container_name: mainflux-nats
     restart: always
+    networks:
+      - mainflux-base-net
+
+  authn-db:
+    image: postgres:10.8-alpine
+    container_name: mainflux-authn-db
+    restart: on-failure
+    environment:
+      POSTGRES_USER: ${MF_AUTHN_DB_USER}
+      POSTGRES_PASSWORD: ${MF_AUTHN_DB_PASS}
+      POSTGRES_DB: ${MF_AUTHN_DB}
+    networks:
+      - mainflux-base-net
+    volumes:
+      - mainflux-authn-db-volume:/var/lib/postgresql/data
+
+  authn:
+    image: mainflux/authn:latest
+    container_name: mainflux-authn
+    depends_on:
+      - authn-db
+    expose:
+      - ${MF_AUTHN_GRPC_PORT}
+    restart: on-failure
+    environment:
+      MF_AUTHN_LOG_LEVEL: ${MF_AUTHN_LOG_LEVEL}
+      MF_AUTHN_DB_HOST: authn-db
+      MF_AUTHN_DB_PORT: ${MF_AUTHN_DB_PORT}
+      MF_AUTHN_DB_USER: ${MF_AUTHN_DB_USER}
+      MF_AUTHN_DB_PASS: ${MF_AUTHN_DB_PASS}
+      MF_AUTHN_DB: ${MF_AUTHN_DB}
+      MF_AUTHN_HTTP_PORT: ${MF_AUTHN_HTTP_PORT}
+      MF_AUTHN_GRPC_PORT: ${MF_AUTHN_GRPC_PORT}
+      MF_AUTHN_SECRET: ${MF_AUTHN_SECRET}
+      MF_JAEGER_URL: ${MF_JAEGER_URL}
+    ports:
+      - ${MF_AUTHN_HTTP_PORT}:${MF_AUTHN_HTTP_PORT}
+      - ${MF_AUTHN_GRPC_PORT}:${MF_AUTHN_GRPC_PORT}
     networks:
       - mainflux-base-net
 
@@ -63,12 +103,13 @@ services:
       - mainflux-users-db-volume:/var/lib/postgresql/data
 
   users:
-    image: mainflux/users:0.9.1
+    image: mainflux/users:0.10.0
     container_name: mainflux-users
+    volumes:
+      - ./users/emailer/templates/${MF_EMAIL_TEMPLATE}:/${MF_EMAIL_TEMPLATE}
     depends_on:
       - users-db
-    expose:
-      - ${MF_USERS_GRPC_PORT}
+      - authn
     restart: always
     environment:
       MF_USERS_LOG_LEVEL: ${MF_USERS_LOG_LEVEL}
@@ -78,9 +119,17 @@ services:
       MF_USERS_DB_PASS: ${MF_USERS_DB_PASS}
       MF_USERS_DB: ${MF_USERS_DB}
       MF_USERS_HTTP_PORT: ${MF_USERS_HTTP_PORT}
-      MF_USERS_GRPC_PORT: ${MF_USERS_GRPC_PORT}
-      MF_USERS_SECRET: ${MF_USERS_SECRET}
       MF_JAEGER_URL: ${MF_JAEGER_URL}
+      MF_EMAIL_DRIVER: ${MF_EMAIL_DRIVER}
+      MF_EMAIL_HOST: ${MF_EMAIL_HOST}
+      MF_EMAIL_PORT: ${MF_EMAIL_PORT}
+      MF_EMAIL_USERNAME: ${MF_EMAIL_USERNAME}
+      MF_EMAIL_PASSWORD: ${MF_EMAIL_PASSWORD}
+      MF_EMAIL_FROM_ADDRESS: ${MF_EMAIL_FROM_ADDRESS}
+      MF_EMAIL_FROM_NAME: ${MF_EMAIL_FROM_NAME}
+      MF_EMAIL_TEMPLATE: ${MF_EMAIL_TEMPLATE}
+      MF_TOKEN_RESET_ENDPOINT: ${MF_TOKEN_RESET_ENDPOINT}
+      MF_AUTHN_URL: authn:${MF_AUTHN_GRPC_PORT}
     ports:
       - ${MF_USERS_HTTP_PORT}:${MF_USERS_HTTP_PORT}
     networks:
@@ -109,11 +158,11 @@ services:
       - mainflux-things-redis-volume:/data
 
   things:
-    image: mainflux/things:0.9.1
+    image: mainflux/things:0.10.0
     container_name: mainflux-things
     depends_on:
       - things-db
-      - users
+      - authn
     restart: always
     environment:
       MF_THINGS_LOG_LEVEL: ${MF_THINGS_LOG_LEVEL}
@@ -127,7 +176,7 @@ services:
       MF_THINGS_HTTP_PORT: ${MF_THINGS_HTTP_PORT}
       MF_THINGS_AUTH_HTTP_PORT: ${MF_THINGS_AUTH_HTTP_PORT}
       MF_THINGS_AUTH_GRPC_PORT: ${MF_THINGS_AUTH_GRPC_PORT}
-      MF_USERS_URL: users:${MF_USERS_GRPC_PORT}
+      MF_AUTH_URL: authn:${MF_AUTHN_GRPC_PORT}
       MF_THINGS_SECRET: ${MF_THINGS_SECRET}
       MF_JAEGER_URL: ${MF_JAEGER_URL}
     ports:
@@ -139,6 +188,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.13
+    container_name: mainflux-jaeger
     ports:
       - ${MF_JAEGER_PORT}:${MF_JAEGER_PORT}/udp
       - ${MF_JAEGER_FRONTEND}:${MF_JAEGER_FRONTEND}
@@ -148,23 +198,8 @@ services:
       - mainflux-base-net
     restart: always
 
-  normalizer:
-    image: mainflux/normalizer:0.9.1
-    container_name: mainflux-normalizer
-    restart: always
-    depends_on:
-      - nats
-    environment:
-      MF_NORMALIZER_LOG_LEVEL: ${MF_NORMALIZER_LOG_LEVEL}
-      MF_NATS_URL: ${MF_NATS_URL}
-      MF_NORMALIZER_PORT: ${MF_NORMALIZER_PORT}
-    ports:
-      - ${MF_NORMALIZER_PORT}:${MF_NORMALIZER_PORT}
-    networks:
-      - mainflux-base-net
-
   ws-adapter:
-    image: mainflux/ws:0.9.1
+    image: mainflux/ws:0.10.0
     container_name: mainflux-ws
     depends_on:
       - things
@@ -182,7 +217,7 @@ services:
       - mainflux-base-net
 
   http-adapter:
-    image: mainflux/http:0.9.1
+    image: mainflux/http:0.10.0
     container_name: mainflux-http
     depends_on:
       - things
@@ -208,41 +243,8 @@ services:
     volumes:
       - mainflux-es-redis-volume:/data
 
-  mqtt-redis:
-    image: redis:5.0-alpine
-    container_name: mainflux-mqtt-redis
-    restart: always
-    networks:
-      - mainflux-base-net
-    volumes:
-      - mainflux-mqtt-redis-volume:/data
-
-  mqtt-adapter:
-    image: mainflux/mqtt:0.9.1
-    container_name: mainflux-mqtt
-    depends_on:
-      - things
-      - nats
-      - mqtt-redis
-    restart: always
-    environment:
-      MF_MQTT_ADAPTER_LOG_LEVEL: ${MF_MQTT_ADAPTER_LOG_LEVEL}
-      MF_MQTT_INSTANCE_ID: mqtt-adapter-1
-      MF_MQTT_ADAPTER_PORT: ${MF_MQTT_ADAPTER_PORT}
-      MF_MQTT_ADAPTER_WS_PORT: ${MF_MQTT_ADAPTER_WS_PORT}
-      MF_MQTT_ADAPTER_REDIS_HOST: mqtt-redis
-      MF_MQTT_ADAPTER_ES_HOST: es-redis
-      MF_NATS_URL: ${MF_NATS_URL}
-      MF_THINGS_URL: things:${MF_THINGS_AUTH_GRPC_PORT}
-      MF_JAEGER_URL: ${MF_JAEGER_URL}
-    ports:
-      - ${MF_MQTT_ADAPTER_PORT}:${MF_MQTT_ADAPTER_PORT}
-      - ${MF_MQTT_ADAPTER_WS_PORT}:${MF_MQTT_ADAPTER_WS_PORT}
-    networks:
-      - mainflux-base-net
-
   coap-adapter:
-    image: mainflux/coap:0.9.0
+    image: mainflux/coap:0.10.0
     container_name: mainflux-coap
     depends_on:
       - things
@@ -256,6 +258,7 @@ services:
       MF_JAEGER_URL: ${MF_JAEGER_URL}
     ports:
       - ${MF_COAP_ADAPTER_PORT}:${MF_COAP_ADAPTER_PORT}/udp
+      - ${MF_COAP_ADAPTER_PORT}:${MF_COAP_ADAPTER_PORT}/tcp
     networks:
       - mainflux-base-net
 
@@ -269,7 +272,6 @@ services:
       - mainflux-base-net
     environment:
       UI_INSIGHIO_PORT: ${UI_INSIGHIO_PORT}
-
 
   mf-rproxy:
     image: insigh-io/mf-rproxy:latest
@@ -285,9 +287,8 @@ services:
       INSIGHIO_PROXY_DB_USER: ${INSIGHIO_PROXY_DB_USER}
       INSIGHIO_PROXY_DB_PASS: ${INSIGHIO_PROXY_DB_PASS}
 
-
   mainflux-ui:
-    image: mainflux/ui-amd64:latest
+    image: mainflux/ui-amd64:0.10.0
     container_name: mainflux-ui
     restart: always
     ports:

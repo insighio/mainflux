@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package mocks
 
@@ -28,7 +24,7 @@ func NewService(subs map[string]*ws.Channel, pubError error) ws.Service {
 	return &mockService{subs, pubError, sync.Mutex{}}
 }
 
-func (svc *mockService) Publish(_ context.Context, _ string, msg mainflux.RawMessage) error {
+func (svc *mockService) Publish(_ context.Context, _ string, msg mainflux.Message) error {
 	if len(msg.Payload) == 0 {
 		return svc.pubError
 	}

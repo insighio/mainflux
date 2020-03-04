@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package grpc
 
@@ -22,17 +18,17 @@ import (
 var _ mainflux.ThingsServiceServer = (*grpcServer)(nil)
 
 type grpcServer struct {
-	canAccess     kitgrpc.Handler
-	canAccessByID kitgrpc.Handler
-	identify      kitgrpc.Handler
+	canAccessByKey kitgrpc.Handler
+	canAccessByID  kitgrpc.Handler
+	identify       kitgrpc.Handler
 }
 
 // NewServer returns new ThingsServiceServer instance.
 func NewServer(tracer opentracing.Tracer, svc things.Service) mainflux.ThingsServiceServer {
 	return &grpcServer{
-		canAccess: kitgrpc.NewServer(
+		canAccessByKey: kitgrpc.NewServer(
 			kitot.TraceServer(tracer, "can_access")(canAccessEndpoint(svc)),
-			decodeCanAccessRequest,
+			decodeCanAccessByKeyRequest,
 			encodeIdentityResponse,
 		),
 		canAccessByID: kitgrpc.NewServer(
@@ -48,8 +44,8 @@ func NewServer(tracer opentracing.Tracer, svc things.Service) mainflux.ThingsSer
 	}
 }
 
-func (gs *grpcServer) CanAccess(ctx context.Context, req *mainflux.AccessReq) (*mainflux.ThingID, error) {
-	_, res, err := gs.canAccess.ServeGRPC(ctx, req)
+func (gs *grpcServer) CanAccessByKey(ctx context.Context, req *mainflux.AccessByKeyReq) (*mainflux.ThingID, error) {
+	_, res, err := gs.canAccessByKey.ServeGRPC(ctx, req)
 	if err != nil {
 		return nil, encodeError(err)
 	}
@@ -75,9 +71,9 @@ func (gs *grpcServer) Identify(ctx context.Context, req *mainflux.Token) (*mainf
 	return res.(*mainflux.ThingID), nil
 }
 
-func decodeCanAccessRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
-	req := grpcReq.(*mainflux.AccessReq)
-	return accessReq{thingKey: req.GetToken(), chanID: req.GetChanID()}, nil
+func decodeCanAccessByKeyRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
+	req := grpcReq.(*mainflux.AccessByKeyReq)
+	return AccessByKeyReq{thingKey: req.GetToken(), chanID: req.GetChanID()}, nil
 }
 
 func decodeCanAccessByIDRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {

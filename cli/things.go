@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package cli
 
@@ -123,7 +119,12 @@ var cmdThings = []cobra.Command{
 				return
 			}
 
-			if err := sdk.ConnectThing(args[0], args[1], args[2]); err != nil {
+			connIDs := mfxsdk.ConnectionIDs{
+				[]string{args[0]},
+				[]string{args[1]},
+			}
+
+			if err := sdk.Connect(connIDs, args[2]); err != nil {
 				logError(err)
 				return
 			}

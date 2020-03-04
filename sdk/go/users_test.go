@@ -1,24 +1,22 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package sdk_test
 
 import (
+	"context"
 	"fmt"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/mainflux/mainflux"
 	log "github.com/mainflux/mainflux/logger"
 	sdk "github.com/mainflux/mainflux/sdk/go"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
 
-	httpapi "github.com/mainflux/mainflux/users/api/http"
+	"github.com/mainflux/mainflux/users/api"
 
 	"github.com/mainflux/mainflux/users"
 	"github.com/mainflux/mainflux/users/mocks"
@@ -31,14 +29,16 @@ const (
 func newUserService() users.Service {
 	repo := mocks.NewUserRepository()
 	hasher := mocks.NewHasher()
-	idp := mocks.NewIdentityProvider()
+	auth := mocks.NewAuthService(map[string]string{"user@example.com": "user@example.com"})
 
-	return users.New(repo, hasher, idp)
+	emailer := mocks.NewEmailer()
+
+	return users.New(repo, hasher, auth, emailer)
 }
 
 func newUserServer(svc users.Service) *httptest.Server {
 	logger, _ := log.New(os.Stdout, log.Info.String())
-	mux := httpapi.MakeHandler(svc, mocktracer.New(), logger)
+	mux := api.MakeHandler(svc, mocktracer.New(), logger)
 	return httptest.NewServer(mux)
 }
 
@@ -120,6 +120,9 @@ func TestCreateToken(t *testing.T) {
 
 	mainfluxSDK := sdk.NewSDK(sdkConf)
 	user := sdk.User{Email: "user@example.com", Password: "password"}
+	auth := mocks.NewAuthService(map[string]string{user.Email: user.Email})
+	tkn, _ := auth.Issue(context.Background(), &mainflux.IssueReq{Issuer: user.Email, Type: 0})
+	token := tkn.GetValue()
 	mainfluxSDK.CreateUser(user)
 	cases := []struct {
 		desc  string
@@ -130,7 +133,7 @@ func TestCreateToken(t *testing.T) {
 		{
 			desc:  "create token for user",
 			user:  user,
-			token: user.Email,
+			token: token,
 			err:   nil,
 		},
 		{

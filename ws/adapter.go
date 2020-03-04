@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 // Package ws contains the domain concept definitions needed to support
 // Mainflux ws adapter service functionality.
@@ -39,7 +35,7 @@ type Service interface {
 
 // Channel is used for receiving and sending messages.
 type Channel struct {
-	Messages chan mainflux.RawMessage
+	Messages chan mainflux.Message
 	Closed   chan bool
 	closed   bool
 	mutex    sync.Mutex
@@ -48,7 +44,7 @@ type Channel struct {
 // NewChannel instantiates empty channel.
 func NewChannel() *Channel {
 	return &Channel{
-		Messages: make(chan mainflux.RawMessage),
+		Messages: make(chan mainflux.Message),
 		Closed:   make(chan bool),
 		closed:   false,
 		mutex:    sync.Mutex{},
@@ -56,7 +52,7 @@ func NewChannel() *Channel {
 }
 
 // Send method send message over Messages channel.
-func (channel *Channel) Send(msg mainflux.RawMessage) {
+func (channel *Channel) Send(msg mainflux.Message) {
 	channel.mutex.Lock()
 	defer channel.mutex.Unlock()
 
@@ -87,7 +83,7 @@ func New(pubsub Service) Service {
 	return &adapterService{pubsub: pubsub}
 }
 
-func (as *adapterService) Publish(ctx context.Context, token string, msg mainflux.RawMessage) error {
+func (as *adapterService) Publish(ctx context.Context, token string, msg mainflux.Message) error {
 	if err := as.pubsub.Publish(ctx, token, msg); err != nil {
 		switch err {
 		case broker.ErrConnectionClosed, broker.ErrInvalidConnection:
@@ -103,5 +99,6 @@ func (as *adapterService) Subscribe(chanID, subtopic string, channel *Channel) e
 	if err := as.pubsub.Subscribe(chanID, subtopic, channel); err != nil {
 		return ErrFailedSubscription
 	}
+
 	return nil
 }

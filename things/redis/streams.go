@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package redis
 
@@ -35,26 +31,28 @@ func NewEventStoreMiddleware(svc things.Service, client *redis.Client) things.Se
 	}
 }
 
-func (es eventStore) AddThing(ctx context.Context, token string, thing things.Thing) (things.Thing, error) {
-	sth, err := es.svc.AddThing(ctx, token, thing)
+func (es eventStore) CreateThings(ctx context.Context, token string, ths ...things.Thing) ([]things.Thing, error) {
+	sths, err := es.svc.CreateThings(ctx, token, ths...)
 	if err != nil {
-		return sth, err
+		return sths, err
 	}
 
-	event := createThingEvent{
-		id:       sth.ID,
-		owner:    sth.Owner,
-		name:     sth.Name,
-		metadata: sth.Metadata,
+	for _, thing := range sths {
+		event := createThingEvent{
+			id:       thing.ID,
+			owner:    thing.Owner,
+			name:     thing.Name,
+			metadata: thing.Metadata,
+		}
+		record := &redis.XAddArgs{
+			Stream:       streamID,
+			MaxLenApprox: streamLen,
+			Values:       event.Encode(),
+		}
+		es.client.XAdd(record).Err()
 	}
-	record := &redis.XAddArgs{
-		Stream:       streamID,
-		MaxLenApprox: streamLen,
-		Values:       event.Encode(),
-	}
-	es.client.XAdd(record).Err()
 
-	return sth, err
+	return sths, nil
 }
 
 func (es eventStore) UpdateThing(ctx context.Context, token string, thing things.Thing) error {
@@ -88,8 +86,8 @@ func (es eventStore) ViewThing(ctx context.Context, token, id string) (things.Th
 	return es.svc.ViewThing(ctx, token, id)
 }
 
-func (es eventStore) ListThings(ctx context.Context, token string, offset, limit uint64, name string) (things.ThingsPage, error) {
-	return es.svc.ListThings(ctx, token, offset, limit, name)
+func (es eventStore) ListThings(ctx context.Context, token string, offset, limit uint64, name string, metadata things.Metadata) (things.ThingsPage, error) {
+	return es.svc.ListThings(ctx, token, offset, limit, name, metadata)
 }
 
 func (es eventStore) ListThingsByChannel(ctx context.Context, token, id string, offset, limit uint64) (things.ThingsPage, error) {
@@ -114,26 +112,28 @@ func (es eventStore) RemoveThing(ctx context.Context, token, id string) error {
 	return nil
 }
 
-func (es eventStore) CreateChannel(ctx context.Context, token string, channel things.Channel) (things.Channel, error) {
-	sch, err := es.svc.CreateChannel(ctx, token, channel)
+func (es eventStore) CreateChannels(ctx context.Context, token string, channels ...things.Channel) ([]things.Channel, error) {
+	schs, err := es.svc.CreateChannels(ctx, token, channels...)
 	if err != nil {
-		return sch, err
+		return schs, err
 	}
 
-	event := createChannelEvent{
-		id:       sch.ID,
-		owner:    sch.Owner,
-		name:     sch.Name,
-		metadata: sch.Metadata,
+	for _, channel := range schs {
+		event := createChannelEvent{
+			id:       channel.ID,
+			owner:    channel.Owner,
+			name:     channel.Name,
+			metadata: channel.Metadata,
+		}
+		record := &redis.XAddArgs{
+			Stream:       streamID,
+			MaxLenApprox: streamLen,
+			Values:       event.Encode(),
+		}
+		es.client.XAdd(record).Err()
 	}
-	record := &redis.XAddArgs{
-		Stream:       streamID,
-		MaxLenApprox: streamLen,
-		Values:       event.Encode(),
-	}
-	es.client.XAdd(record).Err()
 
-	return sch, err
+	return schs, nil
 }
 
 func (es eventStore) UpdateChannel(ctx context.Context, token string, channel things.Channel) error {
@@ -160,8 +160,8 @@ func (es eventStore) ViewChannel(ctx context.Context, token, id string) (things.
 	return es.svc.ViewChannel(ctx, token, id)
 }
 
-func (es eventStore) ListChannels(ctx context.Context, token string, offset, limit uint64, name string) (things.ChannelsPage, error) {
-	return es.svc.ListChannels(ctx, token, offset, limit, name)
+func (es eventStore) ListChannels(ctx context.Context, token string, offset, limit uint64, name string, metadata things.Metadata) (things.ChannelsPage, error) {
+	return es.svc.ListChannels(ctx, token, offset, limit, name, metadata)
 }
 
 func (es eventStore) ListChannelsByThing(ctx context.Context, token, id string, offset, limit uint64) (things.ChannelsPage, error) {
@@ -186,21 +186,25 @@ func (es eventStore) RemoveChannel(ctx context.Context, token, id string) error 
 	return nil
 }
 
-func (es eventStore) Connect(ctx context.Context, token, chanID, thingID string) error {
-	if err := es.svc.Connect(ctx, token, chanID, thingID); err != nil {
+func (es eventStore) Connect(ctx context.Context, token string, chIDs, thIDs []string) error {
+	if err := es.svc.Connect(ctx, token, chIDs, thIDs); err != nil {
 		return err
 	}
 
-	event := connectThingEvent{
-		chanID:  chanID,
-		thingID: thingID,
+	for _, chID := range chIDs {
+		for _, thID := range thIDs {
+			event := connectThingEvent{
+				chanID:  chID,
+				thingID: thID,
+			}
+			record := &redis.XAddArgs{
+				Stream:       streamID,
+				MaxLenApprox: streamLen,
+				Values:       event.Encode(),
+			}
+			es.client.XAdd(record).Err()
+		}
 	}
-	record := &redis.XAddArgs{
-		Stream:       streamID,
-		MaxLenApprox: streamLen,
-		Values:       event.Encode(),
-	}
-	es.client.XAdd(record).Err()
 
 	return nil
 }
@@ -224,8 +228,8 @@ func (es eventStore) Disconnect(ctx context.Context, token, chanID, thingID stri
 	return nil
 }
 
-func (es eventStore) CanAccess(ctx context.Context, chanID string, key string) (string, error) {
-	return es.svc.CanAccess(ctx, chanID, key)
+func (es eventStore) CanAccessByKey(ctx context.Context, chanID string, key string) (string, error) {
+	return es.svc.CanAccessByKey(ctx, chanID, key)
 }
 
 func (es eventStore) CanAccessByID(ctx context.Context, chanID string, thingID string) error {

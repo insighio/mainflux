@@ -1,26 +1,48 @@
 # This script contains commands to be executed by the CI tool.
 NPROC=$(nproc)
+GO_VERSION=1.13
+PROTOC_VERSION=3.11.1
+PROTOC_GEN_VERSION=v1.3.2
+PROTOC_GOFAST_VERSION=v1.3.1
+GRPC_VERSION=v1.24.0
+
+function version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
+
+update_go() {
+	CURRENT_GO_VERSION=$(go version | sed 's/[^0-9.]*\([0-9.]*\).*/\1/')
+	if version_gt $GO_VERSION $CURRENT_GO_VERSION; then
+		echo "Update go version from $CURRENT_GO_VERSION to $GO_VERSION ..."
+		sudo rm -rf /usr/local/go
+		wget https://dl.google.com/go/go$GO_VERSION.linux-amd64.tar.gz
+		sudo mkdir /usr/local/golang/$GO_VERSION && sudo tar -C /usr/local/golang/$GO_VERSION -xzf go$GO_VERSION.linux-amd64.tar.gz
+		rm go$GO_VERSION.linux-amd64.tar.gz
+
+		# remove other Go version from path
+		export PATH=$(echo $PATH | sed -e 's|:/usr/local/golang/[1-9.]*/go/bin||')
+
+		sudo ln -fs /usr/local/golang/$GO_VERSION/go/bin/go /usr/local/bin/go
+
+		# setup GOROOT
+		export GOROOT="/usr/local/golang/$GO_VERSION/go"
+
+		# add new go installation to PATH
+		export PATH="$PATH:/usr/local/golang/$GO_VERSION/go/bin"
+	fi
+	go version
+}
 
 setup_protoc() {
 	echo "Setting up protoc..."
-	PROTOC_ZIP=protoc-3.6.1-linux-x86_64.zip
-	curl -0L https://github.com/google/protobuf/releases/download/v3.6.1/$PROTOC_ZIP -o $PROTOC_ZIP
+	PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
+	curl -0L https://github.com/google/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP -o $PROTOC_ZIP
 	unzip -o $PROTOC_ZIP -d protoc3
 	sudo mv protoc3/bin/* /usr/local/bin/
 	sudo mv protoc3/include/* /usr/local/include/
 	rm -f PROTOC_ZIP
-	go get -u github.com/golang/protobuf/protoc-gen-go \
-		github.com/gogo/protobuf/protoc-gen-gofast \
-		google.golang.org/grpc
-	
-	git -C $GOPATH/src/github.com/golang/protobuf/protoc-gen-go checkout v1.3.1
-	go install github.com/golang/protobuf/protoc-gen-go
-	
-	git -C $GOPATH/src/github.com/gogo/protobuf/protoc-gen-gofast checkout v1.2.1
-	go install github.com/gogo/protobuf/protoc-gen-gofast
 
-	git -C $GOPATH/src/google.golang.org/grpc checkout v1.20.1
-	go install google.golang.org/grpc
+	go get -u github.com/golang/protobuf/protoc-gen-go@$PROTOC_GEN_VERSION \
+		github.com/gogo/protobuf/protoc-gen-gofast@$PROTOC_GOFAST_VERSION \
+		google.golang.org/grpc@$GRPC_VERSION
 
 	export PATH=$PATH:/usr/local/bin/protoc
 }
@@ -48,16 +70,17 @@ setup_mf() {
 
 setup() {
 	echo "Setting up..."
+	update_go
 	setup_protoc
 	setup_mf
 }
 
 run_test() {
 	echo "Running tests..."
-	echo "" > coverage.txt;
+	echo "" > coverage.txt
 	for d in $(go list ./... | grep -v 'vendor\|cmd'); do
 		GOCACHE=off
-		go test -v -race -tags test -coverprofile=profile.out -covermode=atomic $d
+		go test -mod=vendor -v -race -tags test -coverprofile=profile.out -covermode=atomic $d
 		if [ -f profile.out ]; then
 			cat profile.out >> coverage.txt
 			rm profile.out
@@ -65,26 +88,10 @@ run_test() {
 	done
 }
 
-install_qemu() {
-	echo "Installing qemu..."
-	MF_PATH=$GOPATH/src/github.com/mainflux/mainflux
-	cd $MF_PATH
-	sudo apt-get update && sudo apt-get -y install qemu-user-static
-	wget https://github.com/multiarch/qemu-user-static/releases/download/v2.11.1/qemu-arm-static.tar.gz  \
-		&& tar -xzf qemu-arm-static.tar.gz \
-		&& rm qemu-arm-static.tar.gz
-	sudo cp qemu-arm-static /usr/bin/
-}
-
 push() {
 	if test -n "$BRANCH_NAME" && test "$BRANCH_NAME" = "master"; then
 		echo "Pushing Docker images..."
 		make -j$NPROC latest
-		docker system prune -a -f
-		install_qemu
-		GOARCH=arm GOARM=7 make -j$NPROC latest
-		export DOCKER_CLI_EXPERIMENTAL=enabled
-		make latest_manifest
 	fi
 }
 

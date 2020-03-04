@@ -18,11 +18,11 @@ default values.
 | MF_CASSANDRA_WRITER_DB_USERNAME     | Cassandra DB username                                      |                       |
 | MF_CASSANDRA_WRITER_DB_PASSWORD     | Cassandra DB password                                      |                       |
 | MF_CASSANDRA_WRITER_DB_PORT         | Cassandra DB port                                          | 9042                  |
-| MF_CASSANDRA_WRITER_CHANNELS_CONFIG | Configuration file path with channels list                 | /config/channels.yaml |
+| MF_CASSANDRA_WRITER_CHANNELS_CONFIG | Configuration file path with channels list                 | /config/channels.toml |
 ## Deployment
 
 ```yaml
-  version: "2"
+  version: "3.7"
   cassandra-writer:
     image: mainflux/cassandra-writer:[version]
     container_name: [instance name]
@@ -49,10 +49,9 @@ To start the service, execute the following shell script:
 
 ```bash
 # download the latest version of the service
-go get github.com/mainflux/mainflux
+git clone https://github.com/mainflux/mainflux
 
-
-cd $GOPATH/src/github.com/mainflux/mainflux
+cd mainflux
 
 # compile the cassandra writer
 make cassandra-writer

@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package mocks
 
@@ -22,6 +18,6 @@ func NewPublisher() mainflux.MessagePublisher {
 	return mockPublisher{}
 }
 
-func (pub mockPublisher) Publish(_ context.Context, _ string, msg mainflux.RawMessage) error {
+func (pub mockPublisher) Publish(_ context.Context, _ string, msg mainflux.Message) error {
 	return nil
 }

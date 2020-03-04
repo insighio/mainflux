@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package mocks
 
@@ -47,15 +43,17 @@ func NewChannelRepository(repo things.ThingRepository, tconns chan Connection) t
 	}
 }
 
-func (crm *channelRepositoryMock) Save(_ context.Context, channel things.Channel) (string, error) {
+func (crm *channelRepositoryMock) Save(_ context.Context, channels ...things.Channel) ([]things.Channel, error) {
 	crm.mu.Lock()
 	defer crm.mu.Unlock()
 
-	crm.counter++
-	channel.ID = strconv.FormatUint(crm.counter, 10)
-	crm.channels[key(channel.Owner, channel.ID)] = channel
+	for i := range channels {
+		crm.counter++
+		channels[i].ID = strconv.FormatUint(crm.counter, 10)
+		crm.channels[key(channels[i].Owner, channels[i].ID)] = channels[i]
+	}
 
-	return channel.ID, nil
+	return channels, nil
 }
 
 func (crm *channelRepositoryMock) Update(_ context.Context, channel things.Channel) error {
@@ -80,7 +78,7 @@ func (crm *channelRepositoryMock) RetrieveByID(_ context.Context, owner, id stri
 	return things.Channel{}, things.ErrNotFound
 }
 
-func (crm *channelRepositoryMock) RetrieveAll(_ context.Context, owner string, offset, limit uint64, name string) (things.ChannelsPage, error) {
+func (crm *channelRepositoryMock) RetrieveAll(_ context.Context, owner string, offset, limit uint64, name string, metadata things.Metadata) (things.ChannelsPage, error) {
 	channels := make([]things.Channel, 0)
 
 	if offset < 0 || limit <= 0 {
@@ -162,26 +160,31 @@ func (crm *channelRepositoryMock) Remove(_ context.Context, owner, id string) er
 	return nil
 }
 
-func (crm *channelRepositoryMock) Connect(_ context.Context, owner, chanID, thingID string) error {
-	channel, err := crm.RetrieveByID(context.Background(), owner, chanID)
-	if err != nil {
-		return err
+func (crm *channelRepositoryMock) Connect(_ context.Context, owner string, chIDs, thIDs []string) error {
+	for _, chID := range chIDs {
+		ch, err := crm.RetrieveByID(context.Background(), owner, chID)
+		if err != nil {
+			return err
+		}
+
+		for _, thID := range thIDs {
+			th, err := crm.things.RetrieveByID(context.Background(), owner, thID)
+			if err != nil {
+				return err
+			}
+
+			crm.tconns <- Connection{
+				chanID:    chID,
+				thing:     th,
+				connected: true,
+			}
+			if _, ok := crm.cconns[thID]; !ok {
+				crm.cconns[thID] = make(map[string]things.Channel)
+			}
+			crm.cconns[thID][chID] = ch
+		}
 	}
 
-	thing, err := crm.things.RetrieveByID(context.Background(), owner, thingID)
-	if err != nil {
-		return err
-	}
-
-	crm.tconns <- Connection{
-		chanID:    chanID,
-		thing:     thing,
-		connected: true,
-	}
-	if _, ok := crm.cconns[thingID]; !ok {
-		crm.cconns[thingID] = make(map[string]things.Channel)
-	}
-	crm.cconns[thingID][chanID] = channel
 	return nil
 }
 

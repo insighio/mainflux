@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package grpc_test
 
@@ -31,11 +27,14 @@ var (
 	channel = things.Channel{Name: "test", Metadata: map[string]interface{}{"test": "test"}}
 )
 
-func TestCanAccess(t *testing.T) {
-	oth, _ := svc.AddThing(context.Background(), token, thing)
-	cth, _ := svc.AddThing(context.Background(), token, thing)
-	sch, _ := svc.CreateChannel(context.Background(), token, channel)
-	svc.Connect(context.Background(), token, sch.ID, cth.ID)
+func TestCanAccessByKey(t *testing.T) {
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	oth := sths[0]
+	sths, _ = svc.CreateThings(context.Background(), token, thing)
+	cth := sths[0]
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	sch := schs[0]
+	svc.Connect(context.Background(), token, []string{sch.ID}, []string{cth.ID})
 
 	usersAddr := fmt.Sprintf("localhost:%d", port)
 	conn, _ := grpc.Dial(usersAddr, grpc.WithInsecure())
@@ -76,7 +75,7 @@ func TestCanAccess(t *testing.T) {
 	}
 
 	for desc, tc := range cases {
-		id, err := cli.CanAccess(ctx, &mainflux.AccessReq{Token: tc.key, ChanID: tc.chanID})
+		id, err := cli.CanAccessByKey(ctx, &mainflux.AccessByKeyReq{Token: tc.key, ChanID: tc.chanID})
 		e, ok := status.FromError(err)
 		assert.True(t, ok, "OK expected to be true")
 		assert.Equal(t, tc.thingID, id.GetValue(), fmt.Sprintf("%s: expected %s got %s", desc, tc.thingID, id.GetValue()))
@@ -85,10 +84,13 @@ func TestCanAccess(t *testing.T) {
 }
 
 func TestCanAccessByID(t *testing.T) {
-	oth, _ := svc.AddThing(context.Background(), token, thing)
-	cth, _ := svc.AddThing(context.Background(), token, thing)
-	sch, _ := svc.CreateChannel(context.Background(), token, channel)
-	svc.Connect(context.Background(), token, sch.ID, cth.ID)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	oth := sths[0]
+	sths, _ = svc.CreateThings(context.Background(), token, thing)
+	cth := sths[0]
+	schs, _ := svc.CreateChannels(context.Background(), token, channel)
+	sch := schs[0]
+	svc.Connect(context.Background(), token, []string{sch.ID}, []string{cth.ID})
 
 	usersAddr := fmt.Sprintf("localhost:%d", port)
 	conn, _ := grpc.Dial(usersAddr, grpc.WithInsecure())
@@ -137,7 +139,8 @@ func TestCanAccessByID(t *testing.T) {
 }
 
 func TestIdentify(t *testing.T) {
-	sth, _ := svc.AddThing(context.Background(), token, thing)
+	sths, _ := svc.CreateThings(context.Background(), token, thing)
+	sth := sths[0]
 
 	usersAddr := fmt.Sprintf("localhost:%d", port)
 	conn, _ := grpc.Dial(usersAddr, grpc.WithInsecure())

@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package things
 
@@ -27,10 +23,10 @@ type ChannelsPage struct {
 
 // ChannelRepository specifies a channel persistence API.
 type ChannelRepository interface {
-	// Save persists the channel. Successful operation is indicated by unique
-	// identifier accompanied by nil error response. A non-nil error is
-	// returned to indicate operation failure.
-	Save(context.Context, Channel) (string, error)
+	// Save persists multiple channels. Channels are saved using a transaction. If one channel
+	// fails then none will be saved. Successful operation is indicated by non-nil
+	// error response.
+	Save(context.Context, ...Channel) ([]Channel, error)
 
 	// Update performs an update to the existing channel. A non-nil error is
 	// returned to indicate operation failure.
@@ -41,7 +37,7 @@ type ChannelRepository interface {
 	RetrieveByID(context.Context, string, string) (Channel, error)
 
 	// RetrieveAll retrieves the subset of channels owned by the specified user.
-	RetrieveAll(context.Context, string, uint64, uint64, string) (ChannelsPage, error)
+	RetrieveAll(context.Context, string, uint64, uint64, string, Metadata) (ChannelsPage, error)
 
 	// RetrieveByThing retrieves the subset of channels owned by the specified
 	// user and have specified thing connected to them.
@@ -51,8 +47,8 @@ type ChannelRepository interface {
 	// by the specified user.
 	Remove(context.Context, string, string) error
 
-	// Connect adds thing to the channel's list of connected things.
-	Connect(context.Context, string, string, string) error
+	// Connect adds things to the channel's list of connected things.
+	Connect(context.Context, string, []string, []string) error
 
 	// Disconnect removes thing from the channel's list of connected
 	// things.

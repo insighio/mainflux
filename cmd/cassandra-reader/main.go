@@ -1,15 +1,12 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package main
 
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -47,7 +44,7 @@ const (
 	defThingsURL     = "localhost:8181"
 	defClientTLS     = "false"
 	defCACerts       = ""
-	defJaegerURL     = "localhost:6831"
+	defJaegerURL     = ""
 	defThingsTimeout = "1" // in seconds
 
 	envLogLevel      = "MF_CASSANDRA_READER_LOG_LEVEL"
@@ -180,6 +177,10 @@ func connectToThings(cfg config, logger logger.Logger) *grpc.ClientConn {
 }
 
 func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, io.Closer) {
+	if url == "" {
+		return opentracing.NoopTracer{}, ioutil.NopCloser(nil)
+	}
+
 	tracer, closer, err := jconfig.Configuration{
 		ServiceName: svcName,
 		Sampler: &jconfig.SamplerConfig{

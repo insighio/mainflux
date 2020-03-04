@@ -1,15 +1,12 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package main
 
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -28,6 +25,7 @@ import (
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	"github.com/go-redis/redis"
 	"github.com/mainflux/mainflux"
+	authapi "github.com/mainflux/mainflux/authn/api/grpc"
 	"github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/things"
 	"github.com/mainflux/mainflux/things/api"
@@ -38,7 +36,6 @@ import (
 	rediscache "github.com/mainflux/mainflux/things/redis"
 	localusers "github.com/mainflux/mainflux/things/users"
 	"github.com/mainflux/mainflux/things/uuid"
-	usersapi "github.com/mainflux/mainflux/users/api/grpc"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	jconfig "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
@@ -68,11 +65,11 @@ const (
 	defAuthGRPCPort    = "8181"
 	defServerCert      = ""
 	defServerKey       = ""
-	defUsersURL        = "localhost:8181"
 	defSingleUserEmail = ""
 	defSingleUserToken = ""
-	defJaegerURL       = "localhost:6831"
-	defUsersTimeout    = "1" // in seconds
+	defJaegerURL       = ""
+	defAuthURL         = "localhost:8181"
+	defAuthTimeout     = "1" // in seconds
 
 	envLogLevel        = "MF_THINGS_LOG_LEVEL"
 	envDBHost          = "MF_THINGS_DB_HOST"
@@ -95,13 +92,13 @@ const (
 	envHTTPPort        = "MF_THINGS_HTTP_PORT"
 	envAuthHTTPPort    = "MF_THINGS_AUTH_HTTP_PORT"
 	envAuthGRPCPort    = "MF_THINGS_AUTH_GRPC_PORT"
-	envUsersURL        = "MF_USERS_URL"
 	envServerCert      = "MF_THINGS_SERVER_CERT"
 	envServerKey       = "MF_THINGS_SERVER_KEY"
 	envSingleUserEmail = "MF_THINGS_SINGLE_USER_EMAIL"
 	envSingleUserToken = "MF_THINGS_SINGLE_USER_TOKEN"
 	envJaegerURL       = "MF_JAEGER_URL"
-	envUsersTimeout    = "MF_THINGS_USERS_TIMEOUT"
+	envAuthURL         = "MF_AUTH_URL"
+	envAuthTimeout     = "MF_AUTH_TIMEOUT"
 )
 
 type config struct {
@@ -118,13 +115,13 @@ type config struct {
 	httpPort        string
 	authHTTPPort    string
 	authGRPCPort    string
-	usersURL        string
 	serverCert      string
 	serverKey       string
 	singleUserEmail string
 	singleUserToken string
 	jaegerURL       string
-	usersTimeout    time.Duration
+	authURL         string
+	authTimeout     time.Duration
 }
 
 func main() {
@@ -145,10 +142,10 @@ func main() {
 	db := connectToDB(cfg.dbConfig, logger)
 	defer db.Close()
 
-	usersTracer, usersCloser := initJaeger("users", cfg.jaegerURL, logger)
-	defer usersCloser.Close()
+	authTracer, authCloser := initJaeger("auth", cfg.jaegerURL, logger)
+	defer authCloser.Close()
 
-	users, close := createUsersClient(cfg, usersTracer, logger)
+	auth, close := createAuthClient(cfg, authTracer, logger)
 	if close != nil {
 		defer close()
 	}
@@ -159,7 +156,7 @@ func main() {
 	cacheTracer, cacheCloser := initJaeger("things_cache", cfg.jaegerURL, logger)
 	defer cacheCloser.Close()
 
-	svc := newService(users, dbTracer, cacheTracer, db, cacheClient, esClient, logger)
+	svc := newService(auth, dbTracer, cacheTracer, db, cacheClient, esClient, logger)
 	errs := make(chan error, 2)
 
 	go startHTTPServer(thhttpapi.MakeHandler(thingsTracer, svc), cfg.httpPort, cfg, logger, errs)
@@ -182,9 +179,9 @@ func loadConfig() config {
 		log.Fatalf("Invalid value passed for %s\n", envClientTLS)
 	}
 
-	timeout, err := strconv.ParseInt(mainflux.Env(envUsersTimeout, defUsersTimeout), 10, 64)
+	timeout, err := strconv.ParseInt(mainflux.Env(envAuthTimeout, defAuthTimeout), 10, 64)
 	if err != nil {
-		log.Fatalf("Invalid %s value: %s", envUsersTimeout, err.Error())
+		log.Fatalf("Invalid %s value: %s", envAuthTimeout, err.Error())
 	}
 
 	dbConfig := postgres.Config{
@@ -213,17 +210,21 @@ func loadConfig() config {
 		httpPort:        mainflux.Env(envHTTPPort, defHTTPPort),
 		authHTTPPort:    mainflux.Env(envAuthHTTPPort, defAuthHTTPPort),
 		authGRPCPort:    mainflux.Env(envAuthGRPCPort, defAuthGRPCPort),
-		usersURL:        mainflux.Env(envUsersURL, defUsersURL),
 		serverCert:      mainflux.Env(envServerCert, defServerCert),
 		serverKey:       mainflux.Env(envServerKey, defServerKey),
 		singleUserEmail: mainflux.Env(envSingleUserEmail, defSingleUserEmail),
 		singleUserToken: mainflux.Env(envSingleUserToken, defSingleUserToken),
 		jaegerURL:       mainflux.Env(envJaegerURL, defJaegerURL),
-		usersTimeout:    time.Duration(timeout) * time.Second,
+		authURL:         mainflux.Env(envAuthURL, defAuthURL),
+		authTimeout:     time.Duration(timeout) * time.Second,
 	}
 }
 
 func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, io.Closer) {
+	if url == "" {
+		return opentracing.NoopTracer{}, ioutil.NopCloser(nil)
+	}
+
 	tracer, closer, err := jconfig.Configuration{
 		ServiceName: svcName,
 		Sampler: &jconfig.SamplerConfig{
@@ -266,16 +267,16 @@ func connectToDB(dbConfig postgres.Config, logger logger.Logger) *sqlx.DB {
 	return db
 }
 
-func createUsersClient(cfg config, tracer opentracing.Tracer, logger logger.Logger) (mainflux.UsersServiceClient, func() error) {
+func createAuthClient(cfg config, tracer opentracing.Tracer, logger logger.Logger) (mainflux.AuthNServiceClient, func() error) {
 	if cfg.singleUserEmail != "" && cfg.singleUserToken != "" {
 		return localusers.NewSingleUserService(cfg.singleUserEmail, cfg.singleUserToken), nil
 	}
 
-	conn := connectToUsers(cfg, logger)
-	return usersapi.NewClient(tracer, conn, cfg.usersTimeout), conn.Close
+	conn := connectToAuth(cfg, logger)
+	return authapi.NewClient(tracer, conn, cfg.authTimeout), conn.Close
 }
 
-func connectToUsers(cfg config, logger logger.Logger) *grpc.ClientConn {
+func connectToAuth(cfg config, logger logger.Logger) *grpc.ClientConn {
 	var opts []grpc.DialOption
 	if cfg.clientTLS {
 		if cfg.caCerts != "" {
@@ -291,7 +292,7 @@ func connectToUsers(cfg config, logger logger.Logger) *grpc.ClientConn {
 		logger.Info("gRPC communication is not encrypted")
 	}
 
-	conn, err := grpc.Dial(cfg.usersURL, opts...)
+	conn, err := grpc.Dial(cfg.authURL, opts...)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to connect to users service: %s", err))
 		os.Exit(1)
@@ -300,11 +301,13 @@ func connectToUsers(cfg config, logger logger.Logger) *grpc.ClientConn {
 	return conn
 }
 
-func newService(users mainflux.UsersServiceClient, dbTracer opentracing.Tracer, cacheTracer opentracing.Tracer, db *sqlx.DB, cacheClient *redis.Client, esClient *redis.Client, logger logger.Logger) things.Service {
-	thingsRepo := postgres.NewThingRepository(db)
+func newService(auth mainflux.AuthNServiceClient, dbTracer opentracing.Tracer, cacheTracer opentracing.Tracer, db *sqlx.DB, cacheClient *redis.Client, esClient *redis.Client, logger logger.Logger) things.Service {
+	database := postgres.NewDatabase(db)
+
+	thingsRepo := postgres.NewThingRepository(database)
 	thingsRepo = tracing.ThingRepositoryMiddleware(dbTracer, thingsRepo)
 
-	channelsRepo := postgres.NewChannelRepository(db)
+	channelsRepo := postgres.NewChannelRepository(database)
 	channelsRepo = tracing.ChannelRepositoryMiddleware(dbTracer, channelsRepo)
 
 	chanCache := rediscache.NewChannelCache(cacheClient)
@@ -314,7 +317,7 @@ func newService(users mainflux.UsersServiceClient, dbTracer opentracing.Tracer, 
 	thingCache = tracing.ThingCacheMiddleware(cacheTracer, thingCache)
 	idp := uuid.New()
 
-	svc := things.New(users, thingsRepo, channelsRepo, chanCache, thingCache, idp)
+	svc := things.New(auth, thingsRepo, channelsRepo, chanCache, thingCache, idp)
 	svc = rediscache.NewEventStoreMiddleware(svc, esClient)
 	svc = api.LoggingMiddleware(svc, logger)
 	svc = api.MetricsMiddleware(

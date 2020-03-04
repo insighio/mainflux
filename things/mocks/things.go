@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package mocks
 
@@ -48,21 +44,23 @@ func NewThingRepository(conns chan Connection) things.ThingRepository {
 	return repo
 }
 
-func (trm *thingRepositoryMock) Save(_ context.Context, thing things.Thing) (string, error) {
+func (trm *thingRepositoryMock) Save(_ context.Context, ths ...things.Thing) ([]things.Thing, error) {
 	trm.mu.Lock()
 	defer trm.mu.Unlock()
 
-	for _, th := range trm.things {
-		if th.Key == thing.Key {
-			return "", things.ErrConflict
+	for i := range ths {
+		for _, th := range trm.things {
+			if th.Key == ths[i].Key {
+				return []things.Thing{}, things.ErrConflict
+			}
 		}
+
+		trm.counter++
+		ths[i].ID = strconv.FormatUint(trm.counter, 10)
+		trm.things[key(ths[i].Owner, ths[i].ID)] = ths[i]
 	}
 
-	trm.counter++
-	thing.ID = strconv.FormatUint(trm.counter, 10)
-	trm.things[key(thing.Owner, thing.ID)] = thing
-
-	return thing.ID, nil
+	return ths, nil
 }
 
 func (trm *thingRepositoryMock) Update(_ context.Context, thing things.Thing) error {
@@ -114,7 +112,7 @@ func (trm *thingRepositoryMock) RetrieveByID(_ context.Context, owner, id string
 	return things.Thing{}, things.ErrNotFound
 }
 
-func (trm *thingRepositoryMock) RetrieveAll(_ context.Context, owner string, offset, limit uint64, name string) (things.ThingsPage, error) {
+func (trm *thingRepositoryMock) RetrieveAll(_ context.Context, owner string, offset, limit uint64, name string, metadata things.Metadata) (things.ThingsPage, error) {
 	trm.mu.Lock()
 	defer trm.mu.Unlock()
 

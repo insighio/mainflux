@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package api
 
@@ -15,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -24,12 +21,17 @@ import (
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/coap"
 	log "github.com/mainflux/mainflux/logger"
+	"github.com/mainflux/mainflux/transformers/senml"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-const protocol = "coap"
+const (
+	protocol                   = "coap"
+	senMLJSON gocoap.MediaType = 110
+	senMLCBOR gocoap.MediaType = 112
+)
 
 var (
 	errBadRequest        = errors.New("bad request")
@@ -103,7 +105,7 @@ func subtopic(msg *gocoap.Message) string {
 		if c == '/' {
 			pos++
 		}
-		if pos == 2 {
+		if pos == 3 {
 			return path[i:]
 		}
 	}
@@ -112,23 +114,31 @@ func subtopic(msg *gocoap.Message) string {
 
 func authorize(msg *gocoap.Message, res *gocoap.Message, cid string) (string, error) {
 	// Device Key is passed as Uri-Query parameter, which option ID is 15 (0xf).
-	key, err := authKey(msg.Option(gocoap.URIQuery))
-	if err != nil {
-		switch err {
-		case errBadOption:
-			res.Code = gocoap.BadOption
-		case errBadRequest:
-			res.Code = gocoap.BadRequest
-		}
-
-		return "", err
+	query := msg.Option(gocoap.URIQuery)
+	queryStr, ok := query.(string)
+	if !ok {
+		res.Code = gocoap.BadRequest
+		return "", errBadRequest
 	}
+
+	params, err := url.ParseQuery(queryStr)
+	if err != nil {
+		res.Code = gocoap.BadRequest
+		return "", errBadRequest
+	}
+
+	auths, ok := params["authorization"]
+	if !ok || len(auths) != 1 {
+		res.Code = gocoap.BadRequest
+		return "", errBadRequest
+	}
+
+	key := auths[0]
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	id, err := auth.CanAccess(ctx, &mainflux.AccessReq{Token: key, ChanID: cid})
-
+	id, err := auth.CanAccessByKey(ctx, &mainflux.AccessByKeyReq{Token: key, ChanID: cid})
 	if err != nil {
 		e, ok := status.FromError(err)
 		if ok {
@@ -142,6 +152,7 @@ func authorize(msg *gocoap.Message, res *gocoap.Message, cid string) (string, er
 		}
 		res.Code = gocoap.InternalServerError
 	}
+
 	return id.GetValue(), nil
 }
 
@@ -207,21 +218,27 @@ func receive(svc coap.Service, msg *gocoap.Message) *gocoap.Message {
 		return res
 	}
 
+	ct, err := contentType(msg)
+	if err != nil {
+		ct = ""
+	}
+
 	publisher, err := authorize(msg, res, chanID)
 	if err != nil {
 		res.Code = gocoap.Forbidden
 		return res
 	}
 
-	rawMsg := mainflux.RawMessage{
-		Channel:   chanID,
-		Subtopic:  subtopic,
-		Publisher: publisher,
-		Protocol:  protocol,
-		Payload:   msg.Payload,
+	m := mainflux.Message{
+		Channel:     chanID,
+		Subtopic:    subtopic,
+		Publisher:   publisher,
+		ContentType: ct,
+		Protocol:    protocol,
+		Payload:     msg.Payload,
 	}
 
-	if err := svc.Publish(context.Background(), "", rawMsg); err != nil {
+	if err := svc.Publish(context.Background(), "", m); err != nil {
 		res.Code = gocoap.InternalServerError
 	}
 
@@ -316,6 +333,15 @@ func handleMessage(conn *net.UDPConn, addr *net.UDPAddr, o *coap.Observer, msg *
 		observeVal := buff.Bytes()
 		notifyMsg.SetOption(gocoap.Observe, observeVal[len(observeVal)-3:])
 
+		coapCT := senMLJSON
+		switch msg.ContentType {
+		case senml.JSON:
+			coapCT = senMLJSON
+		case senml.CBOR:
+			coapCT = senMLCBOR
+		}
+		notifyMsg.SetOption(gocoap.ContentFormat, coapCT)
+
 		if err := gocoap.Transmit(conn, addr, notifyMsg); err != nil {
 			logger.Warn(fmt.Sprintf("Failed to send message to observer: %s", err))
 		}
@@ -359,4 +385,21 @@ func ping(svc coap.Service, obsID string, conn *net.UDPConn, addr *net.UDPAddr, 
 			return
 		}
 	}
+}
+
+func contentType(msg *gocoap.Message) (string, error) {
+	ctid, ok := msg.Option(gocoap.ContentFormat).(gocoap.MediaType)
+	if !ok {
+		return "", errBadRequest
+	}
+
+	ct := ""
+	switch ctid {
+	case senMLJSON:
+		ct = senml.JSON
+	case senMLCBOR:
+		ct = senml.CBOR
+	}
+
+	return ct, nil
 }

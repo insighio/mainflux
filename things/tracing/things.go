@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package tracing
 
@@ -16,6 +12,7 @@ import (
 
 const (
 	saveThingOp               = "save_thing"
+	saveThingsOp              = "save_things"
 	updateThingOp             = "update_thing"
 	updateThingKeyOp          = "update_thing_by_key"
 	retrieveThingByIDOp       = "retrieve_thing_by_id"
@@ -45,12 +42,12 @@ func ThingRepositoryMiddleware(tracer opentracing.Tracer, repo things.ThingRepos
 	}
 }
 
-func (trm thingRepositoryMiddleware) Save(ctx context.Context, th things.Thing) (string, error) {
-	span := createSpan(ctx, trm.tracer, saveThingOp)
+func (trm thingRepositoryMiddleware) Save(ctx context.Context, ths ...things.Thing) ([]things.Thing, error) {
+	span := createSpan(ctx, trm.tracer, saveThingsOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return trm.repo.Save(ctx, th)
+	return trm.repo.Save(ctx, ths...)
 }
 
 func (trm thingRepositoryMiddleware) Update(ctx context.Context, th things.Thing) error {
@@ -85,12 +82,12 @@ func (trm thingRepositoryMiddleware) RetrieveByKey(ctx context.Context, key stri
 	return trm.repo.RetrieveByKey(ctx, key)
 }
 
-func (trm thingRepositoryMiddleware) RetrieveAll(ctx context.Context, owner string, offset, limit uint64, name string) (things.ThingsPage, error) {
+func (trm thingRepositoryMiddleware) RetrieveAll(ctx context.Context, owner string, offset, limit uint64, name string, metadata things.Metadata) (things.ThingsPage, error) {
 	span := createSpan(ctx, trm.tracer, retrieveAllThingsOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return trm.repo.RetrieveAll(ctx, owner, offset, limit, name)
+	return trm.repo.RetrieveAll(ctx, owner, offset, limit, name, metadata)
 }
 
 func (trm thingRepositoryMiddleware) RetrieveByChannel(ctx context.Context, owner, channel string, offset, limit uint64) (things.ThingsPage, error) {
@@ -154,6 +151,5 @@ func createSpan(ctx context.Context, tracer opentracing.Tracer, opName string) o
 			opentracing.ChildOf(parentSpan.Context()),
 		)
 	}
-
 	return tracer.StartSpan(opName)
 }

@@ -1,15 +1,12 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package main
 
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -40,7 +37,7 @@ const (
 	defLogLevel      = "error"
 	defNatsURL       = broker.DefaultURL
 	defThingsURL     = "localhost:8181"
-	defJaegerURL     = "localhost:6831"
+	defJaegerURL     = ""
 	defThingsTimeout = "1" // in seconds
 
 	envClientTLS     = "MF_WS_ADAPTER_CLIENT_TLS"
@@ -86,7 +83,7 @@ func main() {
 	defer thingsCloser.Close()
 
 	cc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsTimeout)
-	pubsub := nats.New(nc)
+	pubsub := nats.New(nc, logger)
 	svc := newService(pubsub, logger)
 
 	errs := make(chan error, 2)
@@ -155,6 +152,10 @@ func connectToThings(cfg config, logger logger.Logger) *grpc.ClientConn {
 }
 
 func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, io.Closer) {
+	if url == "" {
+		return opentracing.NoopTracer{}, ioutil.NopCloser(nil)
+	}
+
 	tracer, closer, err := jconfig.Configuration{
 		ServiceName: svcName,
 		Sampler: &jconfig.SamplerConfig{

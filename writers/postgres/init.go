@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package postgres
 
@@ -53,23 +49,22 @@ func migrateDB(db *sqlx.DB) error {
 				Id: "messages_1",
 				Up: []string{
 					`CREATE TABLE IF NOT EXISTS messages (
-            id            UUID,
-            channel       UUID,
-            subtopic      VARCHAR(254),
-            publisher     UUID,
-            protocol      TEXT,
-            name          TEXT,
-            unit          TEXT,
-            value         FLOAT,
-            string_value  TEXT,
-            bool_value    BOOL,
-            data_value    TEXT,
-            value_sum     FLOAT,
-            time          FlOAT,
-            update_time   FLOAT,
-            link          TEXT,
-            PRIMARY KEY (id)
-					)`,
+                        id            UUID,
+                        channel       UUID,
+                        subtopic      VARCHAR(254),
+                        publisher     UUID,
+                        protocol      TEXT,
+                        name          TEXT,
+                        unit          TEXT,
+                        value         FLOAT,
+                        string_value  TEXT,
+                        bool_value    BOOL,
+                        data_value    TEXT,
+                        sum           FLOAT,
+                        time          FLOAT,
+                        update_time   FLOAT,
+                        PRIMARY KEY (id)
+                    )`,
 				},
 				Down: []string{
 					"DROP TABLE messages",

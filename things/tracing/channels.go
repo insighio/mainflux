@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package tracing
 
@@ -16,6 +12,7 @@ import (
 
 const (
 	saveChannelOp             = "save_channel"
+	saveChannelsOp            = "save_channels"
 	updateChannelOp           = "update_channel"
 	retrieveChannelByIDOp     = "retrieve_channel_by_id"
 	retrieveAllChannelsOp     = "retrieve_all_channels"
@@ -46,12 +43,12 @@ func ChannelRepositoryMiddleware(tracer opentracing.Tracer, repo things.ChannelR
 	}
 }
 
-func (crm channelRepositoryMiddleware) Save(ctx context.Context, ch things.Channel) (string, error) {
-	span := createSpan(ctx, crm.tracer, saveChannelOp)
+func (crm channelRepositoryMiddleware) Save(ctx context.Context, channels ...things.Channel) ([]things.Channel, error) {
+	span := createSpan(ctx, crm.tracer, saveChannelsOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return crm.repo.Save(ctx, ch)
+	return crm.repo.Save(ctx, channels...)
 }
 
 func (crm channelRepositoryMiddleware) Update(ctx context.Context, ch things.Channel) error {
@@ -70,12 +67,12 @@ func (crm channelRepositoryMiddleware) RetrieveByID(ctx context.Context, owner, 
 	return crm.repo.RetrieveByID(ctx, owner, id)
 }
 
-func (crm channelRepositoryMiddleware) RetrieveAll(ctx context.Context, owner string, offset, limit uint64, name string) (things.ChannelsPage, error) {
+func (crm channelRepositoryMiddleware) RetrieveAll(ctx context.Context, owner string, offset, limit uint64, name string, metadata things.Metadata) (things.ChannelsPage, error) {
 	span := createSpan(ctx, crm.tracer, retrieveAllChannelsOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return crm.repo.RetrieveAll(ctx, owner, offset, limit, name)
+	return crm.repo.RetrieveAll(ctx, owner, offset, limit, name, metadata)
 }
 
 func (crm channelRepositoryMiddleware) RetrieveByThing(ctx context.Context, owner, thing string, offset, limit uint64) (things.ChannelsPage, error) {
@@ -94,12 +91,12 @@ func (crm channelRepositoryMiddleware) Remove(ctx context.Context, owner, id str
 	return crm.repo.Remove(ctx, owner, id)
 }
 
-func (crm channelRepositoryMiddleware) Connect(ctx context.Context, owner, chanID, thingID string) error {
+func (crm channelRepositoryMiddleware) Connect(ctx context.Context, owner string, chIDs, thIDs []string) error {
 	span := createSpan(ctx, crm.tracer, connectOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return crm.repo.Connect(ctx, owner, chanID, thingID)
+	return crm.repo.Connect(ctx, owner, chIDs, thIDs)
 }
 
 func (crm channelRepositoryMiddleware) Disconnect(ctx context.Context, owner, chanID, thingID string) error {
