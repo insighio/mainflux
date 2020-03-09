@@ -15,11 +15,9 @@ envsubst '
     ${MF_THINGS_HTTP_PORT}
     ${MF_HTTP_ADAPTER_PORT}
     ${MF_WS_ADAPTER_PORT}
-    ${MF_UI_PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+    ${MF_UI_PORT}
+    ${INSIGHIO_UI_PORT}
+    ${MF_MQTT_ADAPTER_PORT}
+    ${INSIGHIO_RPROXY_PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
     
-if [ -n "$UI_INSIGHIO_PORT" ]; then
-    sed -i -e "s/UI_INSIGHIO_PORT/$UI_INSIGHIO_PORT/" /etc/nginx/nginx.conf
-else
-    sed -i -e "s/UI_INSIGHIO_PORT/3004/" /etc/nginx/nginx.conf
-fi
 exec nginx -g "daemon off;"
