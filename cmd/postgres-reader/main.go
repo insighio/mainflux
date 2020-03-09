@@ -1,15 +1,12 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package main
 
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -51,7 +48,7 @@ const (
 	defDBSSLCert     = ""
 	defDBSSLKey      = ""
 	defDBSSLRootCert = ""
-	defJaegerURL     = "localhost:6831"
+	defJaegerURL     = ""
 	defThingsTimeout = "1" // in seconds
 
 	envThingsURL     = "MF_THINGS_URL"
@@ -156,6 +153,10 @@ func connectToDB(dbConfig postgres.Config, logger logger.Logger) *sqlx.DB {
 }
 
 func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, io.Closer) {
+	if url == "" {
+		return opentracing.NoopTracer{}, ioutil.NopCloser(nil)
+	}
+
 	tracer, closer, err := jconfig.Configuration{
 		ServiceName: svcName,
 		Sampler: &jconfig.SamplerConfig{

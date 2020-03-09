@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package http_test
 
@@ -70,7 +66,7 @@ func toJSON(data interface{}) string {
 }
 
 func newService(tokens map[string]string) things.Service {
-	users := mocks.NewUsersService(tokens)
+	auth := mocks.NewAuthService(tokens)
 	conns := make(chan mocks.Connection)
 	thingsRepo := mocks.NewThingRepository(conns)
 	channelsRepo := mocks.NewChannelRepository(thingsRepo, conns)
@@ -78,7 +74,7 @@ func newService(tokens map[string]string) things.Service {
 	thingCache := mocks.NewThingCache()
 	idp := mocks.NewIdentityProvider()
 
-	return things.New(users, thingsRepo, channelsRepo, chanCache, thingCache, idp)
+	return things.New(auth, thingsRepo, channelsRepo, chanCache, thingCache, idp)
 }
 
 func newServer(svc things.Service) *httptest.Server {
@@ -91,8 +87,9 @@ func TestIdentify(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sth, err := svc.AddThing(context.Background(), token, thing)
+	sths, err := svc.CreateThings(context.Background(), token, thing)
 	require.Nil(t, err, fmt.Sprintf("failed to create thing: %s", err))
+	sth := sths[0]
 
 	ir := identifyReq{Token: sth.Key}
 	data := toJSON(ir)
@@ -145,21 +142,23 @@ func TestIdentify(t *testing.T) {
 	}
 }
 
-func TestCanAccess(t *testing.T) {
+func TestCanAccessByKey(t *testing.T) {
 	svc := newService(map[string]string{token: email})
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sth, err := svc.AddThing(context.Background(), token, thing)
+	sths, err := svc.CreateThings(context.Background(), token, thing)
 	require.Nil(t, err, fmt.Sprintf("failed to create thing: %s", err))
+	sth := sths[0]
 
-	sch, err := svc.CreateChannel(context.Background(), token, channel)
+	schs, err := svc.CreateChannels(context.Background(), token, channel)
 	require.Nil(t, err, fmt.Sprintf("failed to create channel: %s", err))
+	sch := schs[0]
 
-	err = svc.Connect(context.Background(), token, sch.ID, sth.ID)
+	err = svc.Connect(context.Background(), token, []string{sch.ID}, []string{sth.ID})
 	require.Nil(t, err, fmt.Sprintf("failed to connect thing and channel: %s", err))
 
-	car := canAccessReq{
+	car := canAccessByKeyReq{
 		Token: sth.Key,
 	}
 	data := toJSON(car)
@@ -212,7 +211,7 @@ func TestCanAccess(t *testing.T) {
 		req := testRequest{
 			client:      ts.Client(),
 			method:      http.MethodPost,
-			url:         fmt.Sprintf("%s/channels/%s/access", ts.URL, tc.chanID),
+			url:         fmt.Sprintf("%s/channels/%s/access-by-key", ts.URL, tc.chanID),
 			contentType: tc.contentType,
 			body:        strings.NewReader(tc.req),
 		}
@@ -227,13 +226,15 @@ func TestCanAccessByID(t *testing.T) {
 	ts := newServer(svc)
 	defer ts.Close()
 
-	sth, err := svc.AddThing(context.Background(), token, thing)
+	sths, err := svc.CreateThings(context.Background(), token, thing)
 	require.Nil(t, err, fmt.Sprintf("failed to create thing: %s", err))
+	sth := sths[0]
 
-	sch, err := svc.CreateChannel(context.Background(), token, channel)
+	schs, err := svc.CreateChannels(context.Background(), token, channel)
 	require.Nil(t, err, fmt.Sprintf("failed to create channel: %s", err))
+	sch := schs[0]
 
-	err = svc.Connect(context.Background(), token, sch.ID, sth.ID)
+	err = svc.Connect(context.Background(), token, []string{sch.ID}, []string{sth.ID})
 	require.Nil(t, err, fmt.Sprintf("failed to connect thing and channel: %s", err))
 
 	car := canAccessByIDReq{
@@ -303,7 +304,7 @@ type identifyReq struct {
 	Token string `json:"token"`
 }
 
-type canAccessReq struct {
+type canAccessByKeyReq struct {
 	Token string `json:"token"`
 }
 

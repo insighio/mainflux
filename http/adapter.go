@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 // Package http contains the domain concept definitions needed to support
 // Mainflux http adapter service functionality.
@@ -30,12 +26,12 @@ func New(pub mainflux.MessagePublisher, things mainflux.ThingsServiceClient) mai
 	}
 }
 
-func (as *adapterService) Publish(ctx context.Context, token string, msg mainflux.RawMessage) error {
-	ar := &mainflux.AccessReq{
+func (as *adapterService) Publish(ctx context.Context, token string, msg mainflux.Message) error {
+	ar := &mainflux.AccessByKeyReq{
 		Token:  token,
 		ChanID: msg.GetChannel(),
 	}
-	thid, err := as.things.CanAccess(ctx, ar)
+	thid, err := as.things.CanAccessByKey(ctx, ar)
 	if err != nil {
 		return err
 	}

@@ -1,13 +1,13 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package api_test
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -45,6 +45,7 @@ const (
 )
 
 var (
+	encKey      = []byte("1234567891011121")
 	addChannels = []string{"1"}
 	metadata    = map[string]interface{}{"meta": "data"}
 	addReq      = struct {
@@ -95,6 +96,9 @@ func newConfig(channels []bootstrap.Channel) bootstrap.Config {
 		MFChannels:  channels,
 		Name:        addName,
 		Content:     addContent,
+		ClientCert:  "newcert",
+		ClientKey:   "newkey",
+		CACert:      "newca",
 	}
 }
 
@@ -116,14 +120,44 @@ func (tr testRequest) make() (*http.Response, error) {
 	return tr.client.Do(req)
 }
 
-func newService(users mainflux.UsersServiceClient, unknown map[string]string, url string) bootstrap.Service {
+func enc(in []byte) ([]byte, error) {
+	block, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, err
+	}
+	ciphertext := make([]byte, aes.BlockSize+len(in))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return nil, err
+	}
+	stream := cipher.NewCFBEncrypter(block, iv)
+	stream.XORKeyStream(ciphertext[aes.BlockSize:], in)
+	return ciphertext, nil
+}
+
+func dec(in []byte) ([]byte, error) {
+	block, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(in) < aes.BlockSize {
+		return nil, bootstrap.ErrMalformedEntity
+	}
+	iv := in[:aes.BlockSize]
+	in = in[aes.BlockSize:]
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(in, in)
+	return in, nil
+}
+
+func newService(authn mainflux.AuthNServiceClient, unknown map[string]string, url string) bootstrap.Service {
 	things := mocks.NewConfigsRepository(unknown)
 	config := mfsdk.Config{
 		BaseURL: url,
 	}
 
 	sdk := mfsdk.NewSDK(config)
-	return bootstrap.New(users, things, sdk)
+	return bootstrap.New(authn, things, sdk, encKey)
 }
 
 func generateChannels() map[string]things.Channel {
@@ -139,8 +173,8 @@ func generateChannels() map[string]things.Channel {
 	return channels
 }
 
-func newThingsService(users mainflux.UsersServiceClient) things.Service {
-	return mocks.NewThingsService(map[string]things.Thing{}, generateChannels(), users)
+func newThingsService(authn mainflux.AuthNServiceClient) things.Service {
+	return mocks.NewThingsService(map[string]things.Thing{}, generateChannels(), authn)
 }
 
 func newThingsServer(svc things.Service) *httptest.Server {
@@ -149,7 +183,7 @@ func newThingsServer(svc things.Service) *httptest.Server {
 }
 
 func newBootstrapServer(svc bootstrap.Service) *httptest.Server {
-	mux := bsapi.MakeHandler(svc, bootstrap.NewConfigReader())
+	mux := bsapi.MakeHandler(svc, bootstrap.NewConfigReader(encKey))
 	return httptest.NewServer(mux)
 }
 
@@ -368,7 +402,7 @@ func TestView(t *testing.T) {
 		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
 		var view config
 		if err := json.NewDecoder(res.Body).Decode(&view); err != io.EOF {
-			assert.Nil(t, err, fmt.Sprintf("Decoding expeceted to succeed %s: %s", tc.desc, err))
+			assert.Nil(t, err, fmt.Sprintf("Decoding expected to succeed %s: %s", tc.desc, err))
 		}
 
 		assert.ElementsMatch(t, tc.res.Channels, view.Channels, fmt.Sprintf("%s: expected response '%s' got '%s'", tc.desc, tc.res.Channels, view.Channels))
@@ -490,7 +524,7 @@ func TestUpdateCert(t *testing.T) {
 	cases := []struct {
 		desc        string
 		req         string
-		key         string
+		id          string
 		auth        string
 		contentType string
 		status      int
@@ -498,7 +532,7 @@ func TestUpdateCert(t *testing.T) {
 		{
 			desc:        "update unauthorized",
 			req:         data,
-			key:         saved.MFKey,
+			id:          saved.MFThing,
 			auth:        invalidToken,
 			contentType: contentType,
 			status:      http.StatusForbidden,
@@ -506,7 +540,7 @@ func TestUpdateCert(t *testing.T) {
 		{
 			desc:        "update with an empty token",
 			req:         data,
-			key:         saved.MFKey,
+			id:          saved.MFThing,
 			auth:        "",
 			contentType: contentType,
 			status:      http.StatusForbidden,
@@ -514,7 +548,7 @@ func TestUpdateCert(t *testing.T) {
 		{
 			desc:        "update a valid config",
 			req:         data,
-			key:         saved.MFKey,
+			id:          saved.MFThing,
 			auth:        validToken,
 			contentType: contentType,
 			status:      http.StatusOK,
@@ -522,7 +556,7 @@ func TestUpdateCert(t *testing.T) {
 		{
 			desc:        "update a config with wrong content type",
 			req:         data,
-			key:         saved.MFKey,
+			id:          saved.MFThing,
 			auth:        validToken,
 			contentType: "",
 			status:      http.StatusUnsupportedMediaType,
@@ -530,7 +564,7 @@ func TestUpdateCert(t *testing.T) {
 		{
 			desc:        "update a non-existing config",
 			req:         data,
-			key:         wrongID,
+			id:          wrongID,
 			auth:        validToken,
 			contentType: contentType,
 			status:      http.StatusNotFound,
@@ -538,14 +572,14 @@ func TestUpdateCert(t *testing.T) {
 		{
 			desc:        "update a config with invalid request format",
 			req:         "}",
-			key:         saved.MFKey,
+			id:          saved.MFKey,
 			auth:        validToken,
 			contentType: contentType,
 			status:      http.StatusBadRequest,
 		},
 		{
 			desc:        "update a config with an empty request",
-			key:         saved.MFKey,
+			id:          saved.MFThing,
 			req:         "",
 			auth:        validToken,
 			contentType: contentType,
@@ -556,8 +590,8 @@ func TestUpdateCert(t *testing.T) {
 	for _, tc := range cases {
 		req := testRequest{
 			client:      bs.Client(),
-			method:      http.MethodPut,
-			url:         fmt.Sprintf("%s/things/configs/certs/%s", bs.URL, tc.key),
+			method:      http.MethodPatch,
+			url:         fmt.Sprintf("%s/things/configs/certs/%s", bs.URL, tc.id),
 			contentType: tc.contentType,
 			token:       tc.auth,
 			body:        strings.NewReader(tc.req),
@@ -1100,6 +1134,9 @@ func TestBootstrap(t *testing.T) {
 	saved, err := svc.Add(validToken, c)
 	require.Nil(t, err, fmt.Sprintf("Saving config expected to succeed: %s.\n", err))
 
+	encExternKey, err := enc([]byte(c.ExternalKey))
+	require.Nil(t, err, fmt.Sprintf("Encrypting config expected to succeed: %s.\n", err))
+
 	var channels []channel
 	for _, ch := range saved.MFChannels {
 		channels = append(channels, channel{ID: ch.ID, Name: ch.Name, Metadata: ch.Metadata})
@@ -1110,11 +1147,17 @@ func TestBootstrap(t *testing.T) {
 		MFKey      string    `json:"mainflux_key"`
 		MFChannels []channel `json:"mainflux_channels"`
 		Content    string    `json:"content"`
+		ClientCert string    `json:"client_cert"`
+		ClientKey  string    `json:"client_key"`
+		CACert     string    `json:"ca_cert"`
 	}{
 		MFThing:    saved.MFThing,
 		MFKey:      saved.MFKey,
 		MFChannels: channels,
 		Content:    saved.Content,
+		ClientCert: saved.ClientCert,
+		ClientKey:  saved.ClientKey,
+		CACert:     saved.CACert,
 	}
 
 	data := toJSON(s)
@@ -1125,6 +1168,7 @@ func TestBootstrap(t *testing.T) {
 		external_key string
 		status       int
 		res          string
+		secure       bool
 	}{
 		{
 			desc:         "bootstrap a Thing with unknown ID",
@@ -1132,6 +1176,7 @@ func TestBootstrap(t *testing.T) {
 			external_key: c.ExternalKey,
 			status:       http.StatusNotFound,
 			res:          "",
+			secure:       false,
 		},
 		{
 			desc:         "bootstrap a Thing with an empty ID",
@@ -1139,6 +1184,7 @@ func TestBootstrap(t *testing.T) {
 			external_key: c.ExternalKey,
 			status:       http.StatusBadRequest,
 			res:          "",
+			secure:       false,
 		},
 		{
 			desc:         "bootstrap a Thing with unknown key",
@@ -1146,6 +1192,7 @@ func TestBootstrap(t *testing.T) {
 			external_key: unknown,
 			status:       http.StatusNotFound,
 			res:          "",
+			secure:       false,
 		},
 		{
 			desc:         "bootstrap a Thing with an empty key",
@@ -1153,6 +1200,7 @@ func TestBootstrap(t *testing.T) {
 			external_key: "",
 			status:       http.StatusForbidden,
 			res:          "",
+			secure:       false,
 		},
 		{
 			desc:         "bootstrap known Thing",
@@ -1160,6 +1208,23 @@ func TestBootstrap(t *testing.T) {
 			external_key: c.ExternalKey,
 			status:       http.StatusOK,
 			res:          data,
+			secure:       false,
+		},
+		{
+			desc:         "bootstrap secure",
+			external_id:  fmt.Sprintf("secure/%s", c.ExternalID),
+			external_key: hex.EncodeToString(encExternKey),
+			status:       http.StatusOK,
+			res:          data,
+			secure:       true,
+		},
+		{
+			desc:         "bootstrap secure with unencrypted key",
+			external_id:  fmt.Sprintf("secure/%s", c.ExternalID),
+			external_key: c.ExternalKey,
+			status:       http.StatusNotFound,
+			res:          "",
+			secure:       true,
 		},
 	}
 
@@ -1176,6 +1241,9 @@ func TestBootstrap(t *testing.T) {
 		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
 		body, err := ioutil.ReadAll(res.Body)
 		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+		if tc.secure {
+			body, err = dec(body)
+		}
 
 		data := strings.Trim(string(body), "\n")
 		assert.Equal(t, tc.res, data, fmt.Sprintf("%s: expected response '%s' got '%s'", tc.desc, tc.res, data))

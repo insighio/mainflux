@@ -22,11 +22,12 @@ default values.
 | MF_POSTGRES_WRITER_DB_SSL_CERT      | Postgres SSL certificate path              | ""                    |
 | MF_POSTGRES_WRITER_DB_SSL_KEY       | Postgres SSL key                           | ""                    |
 | MF_POSTGRES_WRITER_DB_SSL_ROOT_CERT | Postgres SSL root certificate path         | ""                    |
-| MF_POSTGRES_WRITER_CHANNELS_CONFIG  | Configuration file path with channels list | /config/channels.yaml |
+| MF_POSTGRES_WRITER_CHANNELS_CONFIG  | Configuration file path with channels list | /config/channels.toml |
 
 ## Deployment
 
 ```yaml
+  version: "3.7"
   postgres-writer:
     image: mainflux/postgres-writer:[version]
     container_name: [instance name]
@@ -60,10 +61,9 @@ To start the service, execute the following shell script:
 
 ```bash
 # download the latest version of the service
-go get github.com/mainflux/mainflux
+git clone https://github.com/mainflux/mainflux
 
-
-cd $GOPATH/src/github.com/mainflux/mainflux
+cd mainflux
 
 # compile the postgres writer
 make postgres-writer

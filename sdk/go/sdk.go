@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package sdk
 
@@ -120,6 +116,12 @@ type MessagesPage struct {
 	Messages []mainflux.Message `json:"messages,omitempty"`
 }
 
+// ConnectionIDs contains ID lists of things and channels to be connected
+type ConnectionIDs struct {
+	ChannelIDs []string `json:"channel_ids"`
+	ThingIDs   []string `json:"thing_ids"`
+}
+
 // SDK contains Mainflux API.
 type SDK interface {
 	// CreateUser registers mainflux user.
@@ -130,6 +132,9 @@ type SDK interface {
 
 	// CreateThing registers new thing and returns its id.
 	CreateThing(thing Thing, token string) (string, error)
+
+	// CreateThings registers new things and returns their ids.
+	CreateThings(things []Thing, token string) ([]Thing, error)
 
 	// Things returns page of things.
 	Things(token string, offset, limit uint64, name string) (ThingsPage, error)
@@ -150,11 +155,17 @@ type SDK interface {
 	// ConnectThing connects thing to specified channel by id.
 	ConnectThing(thingID, chanID, token string) error
 
+	// Connect bulk connects things to channels specified by id.
+	Connect(conns ConnectionIDs, token string) error
+
 	// DisconnectThing disconnect thing from specified channel by id.
 	DisconnectThing(thingID, chanID, token string) error
 
 	// CreateChannel creates new channel and returns its id.
 	CreateChannel(channel Channel, token string) (string, error)
+
+	// CreateChannels registers new channels and returns their ids.
+	CreateChannels(channels []Channel, token string) ([]Channel, error)
 
 	// Channels returns page of channels.
 	Channels(token string, offset, limit uint64, name string) (ChannelsPage, error)
@@ -191,6 +202,7 @@ type mfSDK struct {
 	readerPrefix      string
 	usersPrefix       string
 	thingsPrefix      string
+	channelsPrefix    string
 	httpAdapterPrefix string
 	msgContentType    ContentType
 	client            *http.Client

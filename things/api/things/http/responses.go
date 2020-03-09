@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package http
 
@@ -41,8 +37,11 @@ func (res removeRes) Empty() bool {
 }
 
 type thingRes struct {
-	id      string
-	created bool
+	ID       string                 `json:"id"`
+	Name     string                 `json:"name,omitempty"`
+	Key      string                 `json:"key"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	created  bool
 }
 
 func (res thingRes) Code() int {
@@ -56,7 +55,8 @@ func (res thingRes) Code() int {
 func (res thingRes) Headers() map[string]string {
 	if res.created {
 		return map[string]string{
-			"Location": fmt.Sprintf("/things/%s", res.id),
+			"Location":           fmt.Sprintf("/things/%s", res.ID),
+			"Warning-Deprecated": "This endpoint will be depreciated in v1.0.0. It will be replaced with the bulk endpoint currently found at /things/bulk.",
 		}
 	}
 
@@ -65,6 +65,27 @@ func (res thingRes) Headers() map[string]string {
 
 func (res thingRes) Empty() bool {
 	return true
+}
+
+type thingsRes struct {
+	Things  []thingRes `json:"things"`
+	created bool
+}
+
+func (res thingsRes) Code() int {
+	if res.created {
+		return http.StatusCreated
+	}
+
+	return http.StatusOK
+}
+
+func (res thingsRes) Headers() map[string]string {
+	return map[string]string{}
+}
+
+func (res thingsRes) Empty() bool {
+	return false
 }
 
 type viewThingRes struct {
@@ -105,8 +126,10 @@ func (res thingsPageRes) Empty() bool {
 }
 
 type channelRes struct {
-	id      string
-	created bool
+	ID       string                 `json:"id"`
+	Name     string                 `json:"name,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	created  bool
 }
 
 func (res channelRes) Code() int {
@@ -120,7 +143,8 @@ func (res channelRes) Code() int {
 func (res channelRes) Headers() map[string]string {
 	if res.created {
 		return map[string]string{
-			"Location": fmt.Sprintf("/channels/%s", res.id),
+			"Location":           fmt.Sprintf("/channels/%s", res.ID),
+			"Warning-Deprecated": "This endpoint will be depreciated in v1.0.0. It will be replaced with the bulk endpoint currently found at /channels/bulk.",
 		}
 	}
 
@@ -129,6 +153,27 @@ func (res channelRes) Headers() map[string]string {
 
 func (res channelRes) Empty() bool {
 	return true
+}
+
+type channelsRes struct {
+	Channels []channelRes `json:"channels"`
+	created  bool
+}
+
+func (res channelsRes) Code() int {
+	if res.created {
+		return http.StatusCreated
+	}
+
+	return http.StatusOK
+}
+
+func (res channelsRes) Headers() map[string]string {
+	return map[string]string{}
+}
+
+func (res channelsRes) Empty() bool {
+	return false
 }
 
 type viewChannelRes struct {
@@ -175,10 +220,26 @@ func (res connectionRes) Code() int {
 }
 
 func (res connectionRes) Headers() map[string]string {
-	return map[string]string{}
+	return map[string]string{
+		"Warning-Deprecated": "This endpoint will be depreciated in v1.0.0. It will be replaced with the bulk endpoint found at /connect.",
+	}
 }
 
 func (res connectionRes) Empty() bool {
+	return true
+}
+
+type createConnectionsRes struct{}
+
+func (res createConnectionsRes) Code() int {
+	return http.StatusOK
+}
+
+func (res createConnectionsRes) Headers() map[string]string {
+	return map[string]string{}
+}
+
+func (res createConnectionsRes) Empty() bool {
 	return true
 }
 

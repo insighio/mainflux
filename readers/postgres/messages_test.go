@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package postgres_test
 
@@ -13,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/readers"
 	preader "github.com/mainflux/mainflux/readers/postgres"
+	"github.com/mainflux/mainflux/transformers/senml"
 	pwriter "github.com/mainflux/mainflux/writers/postgres"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +21,14 @@ const (
 	subtopic    = "subtopic"
 	msgsNum     = 42
 	valueFields = 5
+)
+
+var (
+	v       float64 = 5
+	stringV         = "value"
+	boolV           = true
+	dataV           = "base64"
+	sum     float64 = 42
 )
 
 func TestMessageReadAll(t *testing.T) {
@@ -37,41 +41,42 @@ func TestMessageReadAll(t *testing.T) {
 	wrongID, err := uuid.NewV4()
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
 
-	msg := mainflux.Message{
+	m := senml.Message{
 		Channel:   chanID.String(),
 		Publisher: pubID.String(),
 		Protocol:  "mqtt",
 	}
 
-	messages := []mainflux.Message{}
-	subtopicMsgs := []mainflux.Message{}
+	messages := []senml.Message{}
+	subtopicMsgs := []senml.Message{}
 	now := time.Now().Unix()
 	for i := 0; i < msgsNum; i++ {
 		// Mix possible values as well as value sum.
 		count := i % valueFields
-		msg.Subtopic = ""
+		msg := m
 		switch count {
 		case 0:
 			msg.Subtopic = subtopic
-			msg.Value = &mainflux.Message_FloatValue{FloatValue: 5}
+			msg.Value = &v
 		case 1:
-			msg.Value = &mainflux.Message_BoolValue{BoolValue: false}
+			msg.BoolValue = &boolV
 		case 2:
-			msg.Value = &mainflux.Message_StringValue{StringValue: "value"}
+			msg.StringValue = &stringV
 		case 3:
-			msg.Value = &mainflux.Message_DataValue{DataValue: "base64data"}
-		case 5:
-			msg.ValueSum = &mainflux.SumValue{Value: 45}
+			msg.DataValue = &dataV
+		case 4:
+			msg.Sum = &sum
 		}
 		msg.Time = float64(now - int64(i))
 
-		err := messageRepo.Save(msg)
-		assert.Nil(t, err, fmt.Sprintf("expected no error got %s\n", err))
 		messages = append(messages, msg)
 		if count == 0 {
 			subtopicMsgs = append(subtopicMsgs, msg)
 		}
 	}
+
+	err = messageRepo.Save(messages...)
+	assert.Nil(t, err, fmt.Sprintf("expected no error got %s\n", err))
 
 	reader := preader.New(db)
 
@@ -104,7 +109,7 @@ func TestMessageReadAll(t *testing.T) {
 				Total:    0,
 				Offset:   0,
 				Limit:    msgsNum,
-				Messages: []mainflux.Message{},
+				Messages: []senml.Message{},
 			},
 		},
 		"read message last page": {
@@ -127,7 +132,7 @@ func TestMessageReadAll(t *testing.T) {
 				Total:    0,
 				Offset:   0,
 				Limit:    msgsNum,
-				Messages: []mainflux.Message{},
+				Messages: []senml.Message{},
 			},
 		},
 		"read message with subtopic": {
@@ -140,6 +145,18 @@ func TestMessageReadAll(t *testing.T) {
 				Offset:   0,
 				Limit:    uint64(len(subtopicMsgs)),
 				Messages: subtopicMsgs,
+			},
+		},
+		"read message with publisher/protocols": {
+			chanID: chanID.String(),
+			offset: 0,
+			limit:  msgsNum,
+			query:  map[string]string{"publisher": pubID.String(), "protocol": "mqtt"},
+			page: readers.MessagesPage{
+				Total:    msgsNum,
+				Offset:   0,
+				Limit:    msgsNum,
+				Messages: messages,
 			},
 		},
 	}

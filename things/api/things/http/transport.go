@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package http
 
@@ -30,6 +26,7 @@ const (
 	offset      = "offset"
 	limit       = "limit"
 	name        = "name"
+	metadata    = "metadata"
 
 	defOffset = 0
 	defLimit  = 10
@@ -49,8 +46,15 @@ func MakeHandler(tracer opentracing.Tracer, svc things.Service) http.Handler {
 	r := bone.New()
 
 	r.Post("/things", kithttp.NewServer(
-		kitot.TraceServer(tracer, "add_thing")(addThingEndpoint(svc)),
+		kitot.TraceServer(tracer, "create_thing")(createThingEndpoint(svc)),
 		decodeThingCreation,
+		encodeResponse,
+		opts...,
+	))
+
+	r.Post("/things/bulk", kithttp.NewServer(
+		kitot.TraceServer(tracer, "create_things")(createThingsEndpoint(svc)),
+		decodeThingsCreation,
 		encodeResponse,
 		opts...,
 	))
@@ -104,6 +108,13 @@ func MakeHandler(tracer opentracing.Tracer, svc things.Service) http.Handler {
 		opts...,
 	))
 
+	r.Post("/channels/bulk", kithttp.NewServer(
+		kitot.TraceServer(tracer, "create_channels")(createChannelsEndpoint(svc)),
+		decodeChannelsCreation,
+		encodeResponse,
+		opts...,
+	))
+
 	r.Put("/channels/:id", kithttp.NewServer(
 		kitot.TraceServer(tracer, "update_channel")(updateChannelEndpoint(svc)),
 		decodeChannelUpdate,
@@ -146,6 +157,13 @@ func MakeHandler(tracer opentracing.Tracer, svc things.Service) http.Handler {
 		opts...,
 	))
 
+	r.Post("/connect", kithttp.NewServer(
+		kitot.TraceServer(tracer, "create_connections")(createConnectionsEndpoint(svc)),
+		decodeCreateConnections,
+		encodeResponse,
+		opts...,
+	))
+
 	r.Delete("/channels/:chanId/things/:thingId", kithttp.NewServer(
 		kitot.TraceServer(tracer, "disconnect")(disconnectEndpoint(svc)),
 		decodeConnection,
@@ -164,8 +182,21 @@ func decodeThingCreation(_ context.Context, r *http.Request) (interface{}, error
 		return nil, errUnsupportedContentType
 	}
 
-	req := addThingReq{token: r.Header.Get("Authorization")}
+	req := createThingReq{token: r.Header.Get("Authorization")}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func decodeThingsCreation(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errUnsupportedContentType
+	}
+
+	req := createThingsReq{token: r.Header.Get("Authorization")}
+	if err := json.NewDecoder(r.Body).Decode(&req.Things); err != nil {
 		return nil, err
 	}
 
@@ -217,6 +248,20 @@ func decodeChannelCreation(_ context.Context, r *http.Request) (interface{}, err
 	return req, nil
 }
 
+func decodeChannelsCreation(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errUnsupportedContentType
+	}
+
+	req := createChannelsReq{token: r.Header.Get("Authorization")}
+
+	if err := json.NewDecoder(r.Body).Decode(&req.Channels); err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func decodeChannelUpdate(_ context.Context, r *http.Request) (interface{}, error) {
 	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
 		return nil, errUnsupportedContentType
@@ -258,11 +303,17 @@ func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	m, err := readMetadataQuery(r, "metadata")
+	if err != nil {
+		return nil, err
+	}
+
 	req := listResourcesReq{
-		token:  r.Header.Get("Authorization"),
-		offset: o,
-		limit:  l,
-		name:   n,
+		token:    r.Header.Get("Authorization"),
+		offset:   o,
+		limit:    l,
+		name:     n,
+		metadata: m,
 	}
 
 	return req, nil
@@ -294,6 +345,19 @@ func decodeConnection(_ context.Context, r *http.Request) (interface{}, error) {
 		token:   r.Header.Get("Authorization"),
 		chanID:  bone.GetValue(r, "chanId"),
 		thingID: bone.GetValue(r, "thingId"),
+	}
+
+	return req, nil
+}
+
+func decodeCreateConnections(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errUnsupportedContentType
+	}
+
+	req := createConnectionsReq{token: r.Header.Get("Authorization")}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -379,4 +443,23 @@ func readStringQuery(r *http.Request, key string) (string, error) {
 	}
 
 	return vals[0], nil
+}
+
+func readMetadataQuery(r *http.Request, key string) (map[string]interface{}, error) {
+	vals := bone.GetQuery(r, key)
+	if len(vals) > 1 {
+		return nil, errInvalidQueryParams
+	}
+
+	if len(vals) == 0 {
+		return nil, nil
+	}
+
+	m := make(map[string]interface{})
+	err := json.Unmarshal([]byte(vals[0]), &m)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }

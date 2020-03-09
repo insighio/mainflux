@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package main
 
@@ -11,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -44,7 +41,7 @@ const (
 	defDBPort        = "27017"
 	defClientTLS     = "false"
 	defCACerts       = ""
-	defJaegerURL     = "localhost:6831"
+	defJaegerURL     = ""
 	defThingsTimeout = "1" // in seconds
 
 	envThingsURL     = "MF_THINGS_URL"
@@ -141,6 +138,10 @@ func connectToMongoDB(host, port, name string, logger logger.Logger) *mongo.Data
 }
 
 func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, io.Closer) {
+	if url == "" {
+		return opentracing.NoopTracer{}, ioutil.NopCloser(nil)
+	}
+
 	tracer, closer, err := jconfig.Configuration{
 		ServiceName: svcName,
 		Sampler: &jconfig.SamplerConfig{

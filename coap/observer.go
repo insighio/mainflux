@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package coap
 
@@ -29,7 +25,7 @@ type Observer struct {
 	expiredLock, msgIDLock sync.Mutex
 
 	// Messages is used to receive messages from NATS.
-	Messages chan mainflux.RawMessage
+	Messages chan mainflux.Message
 
 	// Cancel channel is used to cancel observing resource.
 	// Cancel channel should not be used to send or receive any
@@ -40,7 +36,7 @@ type Observer struct {
 // NewObserver instantiates a new Observer.
 func NewObserver() *Observer {
 	return &Observer{
-		Messages: make(chan mainflux.RawMessage),
+		Messages: make(chan mainflux.Message),
 		Cancel:   make(chan bool),
 	}
 }

@@ -1,10 +1,6 @@
 #!/bin/bash
-#
-# Copyright (c) 2018
-# Mainflux
-#
+# Copyright (c) Mainflux
 # SPDX-License-Identifier: Apache-2.0
-#
 
 ###
 # Runs all Mainflux microservices (must be previously built and installed).
@@ -26,11 +22,23 @@ function cleanup {
 # NATS
 ###
 gnatsd &
+counter=1
+until nc -zv localhost 4222 1>/dev/null 2>&1; 
+do
+    sleep 0.5
+    ((counter++))
+    if [ ${counter} -gt 10 ]
+    then
+        echo -ne "gnatsd failed to start in 5 sec, exiting"
+        exit 1
+    fi
+    echo -ne "Waiting for gnatsd"
+done
 
 ###
 # Users
 ###
-MF_USERS_LOG_LEVEL=info $BUILD_DIR/mainflux-users &
+MF_USERS_LOG_LEVEL=info MF_EMAIL_TEMPLATE=../docker/users/emailer/templates/email.tmpl $BUILD_DIR/mainflux-users &
 
 ###
 # Things
@@ -48,17 +56,12 @@ MF_HTTP_ADAPTER_LOG_LEVEL=info MF_HTTP_ADAPTER_PORT=8185 MF_THINGS_URL=localhost
 MF_WS_ADAPTER_LOG_LEVEL=info MF_WS_ADAPTER_PORT=8186 MF_THINGS_URL=localhost:8183 $BUILD_DIR/mainflux-ws &
 
 ###
-# NORMALIZER 
-###
-MF_NORMALIZER_LOG_LEVEL=INFO MF_NORMALIZER_PORT=8184 MF_NATS_URL=localhost:4222 $BUILD_DIR/mainflux-normalizer &
-
-###
 # MQTT
 ###
 # Switch to top dir to find *.proto stuff when running MQTT broker
 
 cd ..
-MF_MQTT_ADAPTER_LOG_LEVEL=info MF_THINGS_URL=localhost:8183 node mqtt/mqtt.js &
+MF_MQTT_ADAPTER_LOG_LEVEL=info MF_THINGS_URL=localhost:8183 node mqtt/aedes/mqtt.js &
 cd -
 
 ###

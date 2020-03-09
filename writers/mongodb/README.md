@@ -16,11 +16,12 @@ default values.
 | MF_MONGO_WRITER_DB_NAME         | Default MongoDB database name              | mainflux              |
 | MF_MONGO_WRITER_DB_HOST         | Default MongoDB database host              | localhost             |
 | MF_MONGO_WRITER_DB_PORT         | Default MongoDB database port              | 27017                 |
-| MF_MONGO_WRITER_CHANNELS_CONFIG | Configuration file path with channels list | /config/channels.yaml |
+| MF_MONGO_WRITER_CHANNELS_CONFIG | Configuration file path with channels list | /config/channels.toml |
 
 ## Deployment
 
 ```yaml
+  version: "3.7"
   mongodb-writer:
     image: mainflux/mongodb-writer:[version]
     container_name: [instance name]
@@ -48,10 +49,9 @@ To start the service, execute the following shell script:
 
 ```bash
 # download the latest version of the service
-go get github.com/mainflux/mainflux
+git clone https://github.com/mainflux/mainflux
 
-
-cd $GOPATH/src/github.com/mainflux/mainflux
+cd mainflux
 
 # compile the mongodb writer
 make mongodb-writer

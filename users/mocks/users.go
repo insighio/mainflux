@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package mocks
 
@@ -11,6 +7,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/users"
 )
 
@@ -21,14 +18,14 @@ type userRepositoryMock struct {
 	users map[string]users.User
 }
 
-// NewUserRepository creates in-memory user repository.
+// NewUserRepository creates in-memory user repository
 func NewUserRepository() users.UserRepository {
 	return &userRepositoryMock{
 		users: make(map[string]users.User),
 	}
 }
 
-func (urm *userRepositoryMock) Save(ctx context.Context, user users.User) error {
+func (urm *userRepositoryMock) Save(ctx context.Context, user users.User) errors.Error {
 	urm.mu.Lock()
 	defer urm.mu.Unlock()
 
@@ -40,7 +37,31 @@ func (urm *userRepositoryMock) Save(ctx context.Context, user users.User) error 
 	return nil
 }
 
-func (urm *userRepositoryMock) RetrieveByID(ctx context.Context, email string) (users.User, error) {
+func (urm *userRepositoryMock) Update(ctx context.Context, user users.User) errors.Error {
+	urm.mu.Lock()
+	defer urm.mu.Unlock()
+
+	if _, ok := urm.users[user.Email]; !ok {
+		return users.ErrUserNotFound
+	}
+
+	urm.users[user.Email] = user
+	return nil
+}
+
+func (urm *userRepositoryMock) UpdateUser(ctx context.Context, user users.User) errors.Error {
+	urm.mu.Lock()
+	defer urm.mu.Unlock()
+
+	if _, ok := urm.users[user.Email]; !ok {
+		return users.ErrUserNotFound
+	}
+
+	urm.users[user.Email] = user
+	return nil
+}
+
+func (urm *userRepositoryMock) RetrieveByID(ctx context.Context, email string) (users.User, errors.Error) {
 	urm.mu.Lock()
 	defer urm.mu.Unlock()
 
@@ -50,4 +71,14 @@ func (urm *userRepositoryMock) RetrieveByID(ctx context.Context, email string) (
 	}
 
 	return val, nil
+}
+
+func (urm *userRepositoryMock) UpdatePassword(_ context.Context, token, password string) errors.Error {
+	urm.mu.Lock()
+	defer urm.mu.Unlock()
+
+	if _, ok := urm.users[token]; !ok {
+		return users.ErrUserNotFound
+	}
+	return nil
 }

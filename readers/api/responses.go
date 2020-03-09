@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package api
 
@@ -11,15 +7,16 @@ import (
 	"net/http"
 
 	"github.com/mainflux/mainflux"
+	"github.com/mainflux/mainflux/transformers/senml"
 )
 
 var _ mainflux.Response = (*pageRes)(nil)
 
 type pageRes struct {
-	Total    uint64             `json:"total"`
-	Offset   uint64             `json:"offset"`
-	Limit    uint64             `json:"limit"`
-	Messages []mainflux.Message `json:"messages"`
+	Total    uint64          `json:"total"`
+	Offset   uint64          `json:"offset"`
+	Limit    uint64          `json:"limit"`
+	Messages []senml.Message `json:"messages"`
 }
 
 func (res pageRes) Headers() map[string]string {

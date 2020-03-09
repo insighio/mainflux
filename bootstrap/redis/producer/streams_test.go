@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package producer_test
 
@@ -50,6 +46,8 @@ const (
 )
 
 var (
+	encKey = []byte("1234567891011121")
+
 	channel = bootstrap.Channel{
 		ID:       "1",
 		Name:     "name",
@@ -64,17 +62,17 @@ var (
 	}
 )
 
-func newService(users mainflux.UsersServiceClient, url string) bootstrap.Service {
+func newService(auth mainflux.AuthNServiceClient, url string) bootstrap.Service {
 	configs := mocks.NewConfigsRepository(map[string]string{unknownID: unknownKey})
 	config := mfsdk.Config{
 		BaseURL: url,
 	}
 
 	sdk := mfsdk.NewSDK(config)
-	return bootstrap.New(users, configs, sdk)
+	return bootstrap.New(auth, configs, sdk, encKey)
 }
 
-func newThingsService(users mainflux.UsersServiceClient) things.Service {
+func newThingsService(auth mainflux.AuthNServiceClient) things.Service {
 	channels := make(map[string]things.Channel, channelsNum)
 	for i := 0; i < channelsNum; i++ {
 		id := strconv.Itoa(i + 1)
@@ -85,7 +83,7 @@ func newThingsService(users mainflux.UsersServiceClient) things.Service {
 		}
 	}
 
-	return mocks.NewThingsService(map[string]things.Thing{}, channels, users)
+	return mocks.NewThingsService(map[string]things.Thing{}, channels, auth)
 }
 
 func newThingsServer(svc things.Service) *httptest.Server {
@@ -449,7 +447,7 @@ func TestBootstrap(t *testing.T) {
 
 	lastID := "0"
 	for _, tc := range cases {
-		_, err := svc.Bootstrap(tc.externalKey, tc.externalID)
+		_, err := svc.Bootstrap(tc.externalKey, tc.externalID, false)
 		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 
 		streams := redisClient.XRead(&redis.XReadArgs{

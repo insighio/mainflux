@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 // Package coap contains the domain concept definitions needed to support
 // Mainflux coap adapter service functionality. All constant values are taken
@@ -125,7 +121,7 @@ func (svc *adapterService) listenResponses(responses <-chan string) {
 	}
 }
 
-func (svc *adapterService) Publish(ctx context.Context, token string, msg mainflux.RawMessage) error {
+func (svc *adapterService) Publish(ctx context.Context, token string, msg mainflux.Message) error {
 	if err := svc.pubsub.Publish(ctx, token, msg); err != nil {
 		switch err {
 		case broker.ErrConnectionClosed, broker.ErrInvalidConnection:

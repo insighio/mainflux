@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2018
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package sdk_test
 
@@ -79,6 +75,73 @@ func TestCreateChannel(t *testing.T) {
 		loc, err := mainfluxSDK.CreateChannel(tc.channel, tc.token)
 		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected error %s, got %s", tc.desc, tc.err, err))
 		assert.Equal(t, tc.empty, loc == "", fmt.Sprintf("%s: expected empty result location, got: %s", tc.desc, loc))
+	}
+}
+
+func TestCreateChannels(t *testing.T) {
+	svc := newThingsService(map[string]string{token: email})
+	ts := newThingsServer(svc)
+	defer ts.Close()
+
+	sdkConf := sdk.Config{
+		BaseURL:           ts.URL,
+		UsersPrefix:       "",
+		ThingsPrefix:      "",
+		HTTPAdapterPrefix: "",
+		MsgContentType:    contentType,
+		TLSVerification:   false,
+	}
+
+	mainfluxSDK := sdk.NewSDK(sdkConf)
+
+	channels := []sdk.Channel{
+		sdk.Channel{ID: "1", Name: "1"},
+		sdk.Channel{ID: "2", Name: "2"},
+	}
+
+	cases := []struct {
+		desc     string
+		channels []sdk.Channel
+		token    string
+		err      error
+		res      []sdk.Channel
+	}{
+		{
+			desc:     "create new channels",
+			channels: channels,
+			token:    token,
+			err:      nil,
+			res:      channels,
+		},
+		{
+			desc:     "create new channels with empty channels",
+			channels: []sdk.Channel{},
+			token:    token,
+			err:      sdk.ErrInvalidArgs,
+			res:      []sdk.Channel{},
+		},
+		{
+			desc:     "create new channels with empty token",
+			channels: channels,
+			token:    "",
+			err:      sdk.ErrUnauthorized,
+			res:      []sdk.Channel{},
+		},
+		{
+			desc:     "create new channels with invalid token",
+			channels: channels,
+			token:    wrongValue,
+			err:      sdk.ErrUnauthorized,
+			res:      []sdk.Channel{},
+		},
+	}
+	for _, tc := range cases {
+		res, err := mainfluxSDK.CreateChannels(tc.channels, tc.token)
+		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected error %s, got %s", tc.desc, tc.err, err))
+
+		for idx, _ := range tc.res {
+			assert.Equal(t, tc.res[idx].ID, res[idx].ID, fmt.Sprintf("%s: expected response ID %s got %s", tc.desc, tc.res[idx].ID, res[idx].ID))
+		}
 	}
 }
 

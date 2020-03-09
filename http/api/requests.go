@@ -1,9 +1,5 @@
-//
-// Copyright (c) 2019
-// Mainflux
-//
+// Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
-//
 
 package api
 
@@ -12,6 +8,6 @@ import (
 )
 
 type publishReq struct {
-	msg   mainflux.RawMessage
+	msg   mainflux.Message
 	token string
 }
