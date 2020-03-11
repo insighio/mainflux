@@ -54,7 +54,7 @@ services:
   authn-db:
     image: postgres:10.8-alpine
     container_name: mainflux-authn-db
-    restart: on-failure
+    restart: always
     environment:
       POSTGRES_USER: ${MF_AUTHN_DB_USER}
       POSTGRES_PASSWORD: ${MF_AUTHN_DB_PASS}
@@ -71,7 +71,7 @@ services:
       - authn-db
     expose:
       - ${MF_AUTHN_GRPC_PORT}
-    restart: on-failure
+    restart: always
     environment:
       MF_AUTHN_LOG_LEVEL: ${MF_AUTHN_LOG_LEVEL}
       MF_AUTHN_DB_HOST: authn-db
