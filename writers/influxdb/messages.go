@@ -14,7 +14,7 @@ import (
 	influxdata "github.com/influxdata/influxdb/client/v2"
 )
 
-const pointName = "messages"
+const pointNamePrefix = "m-"
 
 var _ writers.MessageRepository = (*influxRepo)(nil)
 
@@ -48,7 +48,7 @@ func (repo *influxRepo) Save(messages ...senml.Message) error {
 		sec, dec := math.Modf(msg.Time)
 		t := time.Unix(int64(sec), int64(dec*(1e9)))
 
-		pt, err := influxdata.NewPoint(pointName, tgs, flds, t)
+		pt, err := influxdata.NewPoint(pointNamePrefix + msg.Channel, tgs, flds, t)
 		if err != nil {
 			return err
 		}
