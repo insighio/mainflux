@@ -83,7 +83,7 @@ func main() {
 	}
 	defer client.Close()
 
-	repo := influxdb.New(client, cfg.dbName)
+	repo := influxdb.New(client, cfg.dbName, logger)
 
 	counter, latency := makeMetrics()
 	repo = api.LoggingMiddleware(repo, logger)
