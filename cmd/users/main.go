@@ -102,6 +102,7 @@ const (
 	envEmailFromName    = "MF_EMAIL_FROM_NAME"
 	envEmailLogLevel    = "MF_EMAIL_LOG_LEVEL"
 	envEmailTemplate    = "MF_EMAIL_TEMPLATE"
+	envEmailVerifyTemplate = "MF_EMAIL_VERIFY_TEMPLATE"
 
 	envTokenResetEndpoint  = "MF_TOKEN_RESET_ENDPOINT"
 	envTokenVerifyEndpoint = "MF_TOKEN_VERIFY_ENDPOINT"
