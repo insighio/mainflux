@@ -69,6 +69,7 @@ const (
 	defEmailTemplate    = "email.tmpl"
 
 	defTokenResetEndpoint = "/reset-request" // URL where user lands after click on the reset link from email
+	defTokenVerifyEndpoint = "/verify"
 
 	envLogLevel      = "MF_USERS_LOG_LEVEL"
 	envDBHost        = "MF_USERS_DB_HOST"
@@ -102,7 +103,8 @@ const (
 	envEmailLogLevel    = "MF_EMAIL_LOG_LEVEL"
 	envEmailTemplate    = "MF_EMAIL_TEMPLATE"
 
-	envTokenResetEndpoint = "MF_TOKEN_RESET_ENDPOINT"
+	envTokenResetEndpoint  = "MF_TOKEN_RESET_ENDPOINT"
+	envTokenVerifyEndpoint = "MF_TOKEN_VERIFY_ENDPOINT"
 )
 
 type config struct {
@@ -120,6 +122,7 @@ type config struct {
 	serverKey     string
 	jaegerURL     string
 	resetURL      string
+	verifyURL     string
 }
 
 func main() {
@@ -210,6 +213,7 @@ func loadConfig() config {
 		serverKey:     mainflux.Env(envServerKey, defServerKey),
 		jaegerURL:     mainflux.Env(envJaegerURL, defJaegerURL),
 		resetURL:      mainflux.Env(envTokenResetEndpoint, defTokenResetEndpoint),
+		verifyURL:     mainflux.Env(envTokenVerifyEndpoint, defTokenVerifyEndpoint),
 	}
 
 }
@@ -277,7 +281,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthNServi
 	database := postgres.NewDatabase(db)
 	repo := tracing.UserRepositoryMiddleware(postgres.New(database), tracer)
 	hasher := bcrypt.New()
-	emailer, err := emailer.New(c.resetURL, &c.emailConf)
+	emailer, err := emailer.New(c.resetURL, c.verifyURL, &c.emailConf)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to configure e-mailing util: %s", err.Error()))
 	}

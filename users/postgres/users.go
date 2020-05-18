@@ -104,6 +104,11 @@ func (ur userRepository) UpdatePassword(ctx context.Context, email, password str
 	return nil
 }
 
+func (ur userRepository) VerifyEmail(ctx context.Context, email string) errors.Error {
+
+	return nil
+}
+
 // dbMetadata type for handling metadata properly in database/sql
 type dbMetadata map[string]interface{}
 

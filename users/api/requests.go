@@ -55,6 +55,18 @@ func (req passwResetReq) validate() errors.Error {
 	return nil
 }
 
+type emailVerificationReq struct {
+	Email string `json:"email"`
+	Host  string `json:"host"`
+}
+
+func (req emailVerificationReq) validate() errors.Error {
+	if req.Email == "" || req.Host == "" {
+		return users.ErrMalformedEntity
+	}
+	return nil
+}
+
 type resetTokenReq struct {
 	Token    string `json:"token"`
 	Password string `json:"password"`
@@ -70,6 +82,17 @@ func (req resetTokenReq) validate() errors.Error {
 	}
 	if req.Password != req.ConfPass {
 		return users.ErrMalformedEntity
+	}
+	return nil
+}
+
+type emailVerificationTokenReq struct {
+	Token    string `json:"token"`
+}
+
+func (req emailVerificationTokenReq) validate() errors.Error {
+	if req.Token == "" {
+		return users.ErrMissingVerificationToken
 	}
 	return nil
 }
