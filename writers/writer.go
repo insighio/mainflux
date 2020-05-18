@@ -45,8 +45,8 @@ func (c *consumer) consume(m *nats.Msg) {
 		return
 	}
 
-	c.logger.Warn(fmt.Sprintf(" - NATS message: %s", string(m.Data)))
-	c.logger.Warn(fmt.Sprintf(" - UNMARSHALED message: %s", string(msg.String())))
+	// c.logger.Warn(fmt.Sprintf(" - NATS message: %s", string(m.Data)))
+	// c.logger.Warn(fmt.Sprintf(" - UNMARSHALED message: %s", string(msg.String())))
 
 	t, err := c.transformer.Transform(msg)
 	if err != nil {

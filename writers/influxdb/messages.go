@@ -59,7 +59,7 @@ func (repo *influxRepo) Save(messages ...senml.Message) error {
 
 		var customPointName = strings.Replace(pointName+msg.Channel, "-", "_", -1)
 
-		repo.logger.Warn(fmt.Sprintf("Selecting point name: %s, from channel: %s, @%s, ", customPointName, msg.Channel, t.String()))
+		//repo.logger.Warn(fmt.Sprintf("Selecting point name: %s, from channel: %s, @%s, ", customPointName, msg.Channel, t.String()))
 
 		pt, err := influxdata.NewPoint(customPointName, tgs, flds, t)
 		if err != nil {
