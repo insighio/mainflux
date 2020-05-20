@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/mainflux/mainflux/authn"
+	"fmt"
 )
 
 type claims struct {
@@ -55,12 +56,18 @@ func (svc tokenizer) Issue(key authn.Key) (string, error) {
 
 func (svc tokenizer) Parse(token string) (authn.Key, error) {
 	c := claims{}
+	fmt.Printf("tokenizer-parse 1: %s\n", token)
 	_, err := jwt.ParseWithClaims(token, &c, func(token *jwt.Token) (interface{}, error) {
+		fmt.Printf("tokenizer-parse 2.1\n")
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			fmt.Printf("tokenizer-parse 2.2\n")
 			return nil, authn.ErrUnauthorizedAccess
 		}
+		fmt.Printf("tokenizer-parse 2.3: %s\n", svc.secret)
 		return []byte(svc.secret), nil
 	})
+
+	fmt.Printf("tokenizer-parse 3: %s\n", err)
 
 	if err != nil {
 		if e, ok := err.(*jwt.ValidationError); ok && e.Errors == jwt.ValidationErrorExpired {
@@ -68,11 +75,14 @@ func (svc tokenizer) Parse(token string) (authn.Key, error) {
 			if c.Type != nil && *c.Type == authn.APIKey {
 				return c.toKey(), nil
 			}
+			fmt.Printf("tokenizer-parse 4\n")
 			return authn.Key{}, authn.ErrKeyExpired
 		}
+		fmt.Printf("tokenizer-parse 5\n")
 		return authn.Key{}, authn.ErrUnauthorizedAccess
 	}
 
+	fmt.Printf("tokenizer-parse 6\n")
 	return c.toKey(), nil
 }
 

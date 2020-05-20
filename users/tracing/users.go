@@ -16,7 +16,6 @@ import (
 const (
 	saveOp             = "save_op"
 	retrieveByIDOp     = "retrieve_by_id"
-	generateResetToken = "generate_reset_token"
 	updatePassword     = "update_password"
 	sendPasswordReset  = "send_reset_password"
 	sendEmailVerification = "send_email_verification"
@@ -71,12 +70,12 @@ func (urm userRepositoryMiddleware) UpdatePassword(ctx context.Context, email, p
 	return urm.repo.UpdatePassword(ctx, email, password)
 }
 
-func (urm userRepositoryMiddleware) VerifyEmail(ctx context.Context, email string) errors.Error {
+func (urm userRepositoryMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) errors.Error {
 	span := createSpan(ctx, urm.tracer, verifyEmail)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return urm.repo.VerifyEmail(ctx, email)
+	return urm.repo.VerifyEmail(ctx, emailVerificationToken)
 }
 
 func createSpan(ctx context.Context, tracer opentracing.Tracer, opName string) opentracing.Span {

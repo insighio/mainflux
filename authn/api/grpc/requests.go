@@ -3,7 +3,10 @@
 
 package grpc
 
-import "github.com/mainflux/mainflux/authn"
+import (
+	"github.com/mainflux/mainflux/authn"
+	"fmt"
+)
 
 type identityReq struct {
 	token string
@@ -16,7 +19,8 @@ func (req identityReq) validate() error {
 	}
 	if req.kind != authn.UserKey &&
 		req.kind != authn.APIKey &&
-		req.kind != authn.RecoveryKey {
+		req.kind != authn.RecoveryKey &&
+		req.kind != authn.EmailVerificationKey {
 		return authn.ErrMalformedEntity
 	}
 
@@ -29,14 +33,20 @@ type issueReq struct {
 }
 
 func (req issueReq) validate() error {
+	fmt.Printf("grpc-requests 1: %s\n", req.issuer)
 	if req.issuer == "" {
+		fmt.Printf("grpc-requests 2\n")
 		return authn.ErrUnauthorizedAccess
 	}
+	fmt.Printf("grpc-requests 3\n")
 	if req.keyType != authn.UserKey &&
 		req.keyType != authn.APIKey &&
-		req.keyType != authn.RecoveryKey {
+		req.keyType != authn.RecoveryKey &&
+		req.keyType != authn.EmailVerificationKey {
+			fmt.Printf("grpc-requests 4\n")
 		return authn.ErrMalformedEntity
 	}
 
+	fmt.Printf("grpc-requests 4\n")
 	return nil
 }

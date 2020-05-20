@@ -11,6 +11,8 @@ import (
 
 	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/users"
+
+	"fmt"
 )
 
 var (
@@ -73,18 +75,27 @@ func (ur userRepository) UpdateUser(ctx context.Context, user users.User) errors
 func (ur userRepository) RetrieveByID(ctx context.Context, email string) (users.User, errors.Error) {
 	q := `SELECT password, metadata FROM users WHERE email = $1`
 
+	fmt.Println("postgres-users-RetrieveByID [1]:\n", q)
+
 	dbu := dbUser{
 		Email: email,
 	}
 	if err := ur.db.QueryRowxContext(ctx, q, email).StructScan(&dbu); err != nil {
+		fmt.Println("postgres-users-RetrieveByID [2]")
 		if err == sql.ErrNoRows {
+			fmt.Println("postgres-users-RetrieveByID [3]")
 			return users.User{}, errors.Wrap(users.ErrNotFound, err)
 
 		}
+		fmt.Println("postgres-users-RetrieveByID [4]")
 		return users.User{}, errors.Wrap(errRetrieveDB, err)
 	}
 
+	fmt.Println("postgres-users-RetrieveByID [5]")
+
 	user := toUser(dbu)
+
+	fmt.Println("postgres-users-RetrieveByID: user: ", user)
 
 	return user, nil
 }
@@ -105,7 +116,7 @@ func (ur userRepository) UpdatePassword(ctx context.Context, email, password str
 }
 
 func (ur userRepository) VerifyEmail(ctx context.Context, email string) errors.Error {
-
+	fmt.Println("postgres-users-VerifyEmail: %s\n", email)
 	return nil
 }
 
