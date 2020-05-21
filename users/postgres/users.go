@@ -75,8 +75,6 @@ func (ur userRepository) UpdateUser(ctx context.Context, user users.User) errors
 func (ur userRepository) RetrieveByID(ctx context.Context, email string) (users.User, errors.Error) {
 	q := `SELECT password, metadata FROM users WHERE email = $1`
 
-	fmt.Println("postgres-users-RetrieveByID [1]:\n", q)
-
 	dbu := dbUser{
 		Email: email,
 	}
@@ -116,7 +114,20 @@ func (ur userRepository) UpdatePassword(ctx context.Context, email, password str
 }
 
 func (ur userRepository) VerifyEmail(ctx context.Context, email string) errors.Error {
-	fmt.Println("postgres-users-VerifyEmail: %s\n", email)
+	user, err := ur.RetrieveByID(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	val, ok := user.Metadata["verified"]
+	if !ok || val == false {
+		//add verified tag in metadata and save user info back to the DB
+
+		user.Metadata["verified"] = true
+		err = ur.UpdateUser(ctx, user)
+		return err
+	}
+
 	return nil
 }
 
