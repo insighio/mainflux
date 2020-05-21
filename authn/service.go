@@ -6,15 +6,15 @@ package authn
 import (
 	"context"
 	"errors"
-	"time"
 	"fmt"
+	"time"
 )
 
 const (
-	loginDuration = 10 * time.Hour
-	resetDuration = 5 * time.Minute
+	loginDuration             = 10 * time.Hour
+	resetDuration             = 5 * time.Minute
 	emailVerificationDuration = 48 * time.Hour
-	issuerName    = "mainflux.authn"
+	issuerName                = "mainflux.authn"
 )
 
 var (
@@ -132,35 +132,19 @@ func (svc service) Identify(ctx context.Context, token string) (string, error) {
 }
 
 func (svc service) loginKey(issuer string, key Key) (Key, error) {
-	key.Secret = issuer
-	return svc.tempKey(loginDuration, key)
+	return svc.tmpKey(issuer, loginDuration, key)
 }
 
 func (svc service) resetKey(ctx context.Context, issuer string, key Key) (Key, error) {
-	// issuer, err := svc.login(issuer)
-	// if err != nil {
-	// 	return Key{}, err
-	// }
-	// key.Secret = issuer
-
-	return svc.tempKey(resetDuration, key)
+	return svc.tmpKey(issuer, resetDuration, key)
 }
 
 func (svc service) verifyEmailKey(ctx context.Context, issuer string, key Key) (Key, error) {
-	fmt.Printf("service-verifyEmailKey 1 %s\n", issuer)
-	// issuer, err := svc.login(issuer)
-	// fmt.Printf("service-verifyEmailKey 2\n")
-	// if err != nil {
-	// 	fmt.Printf("service-verifyEmailKey 3\n")
-	// 	return Key{}, err
-	// }
-	// fmt.Printf("service-verifyEmailKey 4\n")
-	// key.Secret = issuer
-
-	return svc.tempKey(emailVerificationDuration, key)
+	return svc.tmpKey(issuer, emailVerificationDuration, key)
 }
 
-func (svc service) tempKey(duration time.Duration, key Key) (Key, error) {
+func (svc service) tmpKey(issuer string, duration time.Duration, key Key) (Key, error) {
+	key.Secret = issuer
 	key.Issuer = issuerName
 	key.ExpiresAt = key.IssuedAt.Add(duration)
 	val, err := svc.tokenizer.Issue(key)
