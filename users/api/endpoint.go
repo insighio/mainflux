@@ -8,8 +8,6 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/mainflux/mainflux/users"
-
-	"fmt"
 )
 
 func registrationEndpoint(svc users.Service) endpoint.Endpoint {
@@ -85,26 +83,19 @@ func passwordResetEndpoint(svc users.Service) endpoint.Endpoint {
 // of the verification process
 func emailVerificationRequestEndpoint(svc users.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		fmt.Printf("emailVerificationRequestEndpoint 1\n")
 		req := request.(emailVerificationReq)
-		fmt.Printf("emailVerificationRequestEndpoint 2\n")
 		if err := req.validate(); err != nil {
 			return nil, err
 		}
 
-		fmt.Printf("emailVerificationRequestEndpoint 3\n")
 		res := emailVerificationRes{}
 		email := req.Email
-
-		fmt.Printf("emailVerificationRequestEndpoint 4: %s\n", email)
 
 		if err := svc.GenerateEmailVerificationToken(ctx, email, req.Host); err != nil {
 			return nil, err
 		}
 
-		fmt.Printf("emailVerificationRequestEndpoint 5\n")
 		res.Msg = MailSent
-		fmt.Printf("emailVerificationRequestEndpoint 6\n")
 		return res, nil
 	}
 }
@@ -114,20 +105,15 @@ func emailVerificationRequestEndpoint(svc users.Service) endpoint.Endpoint {
 // the comment above.
 func emailVerificationEndpoint(svc users.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		fmt.Printf("emailVerificationEndpoint 1\n")
 		req := request.(emailVerificationTokenReq)
-		fmt.Printf("emailVerificationEndpoint 2\n")
 		if err := req.validate(); err != nil {
 			return nil, err
 		}
-		fmt.Printf("emailVerificationEndpoint 3\n")
 		res := emailVerificationRes{}
-		fmt.Printf("emailVerificationEndpoint 4\n")
 
 		if err := svc.VerifyEmail(ctx, req.Token); err != nil {
 			return nil, err
 		}
-		fmt.Printf("emailVerificationEndpoint 5\n")
 		res.Msg = ""
 		return res, nil
 	}

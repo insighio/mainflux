@@ -11,8 +11,6 @@ import (
 
 	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/users"
-
-	"fmt"
 )
 
 var (
@@ -79,21 +77,14 @@ func (ur userRepository) RetrieveByID(ctx context.Context, email string) (users.
 		Email: email,
 	}
 	if err := ur.db.QueryRowxContext(ctx, q, email).StructScan(&dbu); err != nil {
-		fmt.Println("postgres-users-RetrieveByID [2]")
 		if err == sql.ErrNoRows {
-			fmt.Println("postgres-users-RetrieveByID [3]")
 			return users.User{}, errors.Wrap(users.ErrNotFound, err)
 
 		}
-		fmt.Println("postgres-users-RetrieveByID [4]")
 		return users.User{}, errors.Wrap(errRetrieveDB, err)
 	}
 
-	fmt.Println("postgres-users-RetrieveByID [5]")
-
 	user := toUser(dbu)
-
-	fmt.Println("postgres-users-RetrieveByID: user: ", user)
 
 	return user, nil
 }

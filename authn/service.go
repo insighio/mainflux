@@ -6,7 +6,6 @@ package authn
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -183,24 +182,17 @@ func (svc service) userKey(ctx context.Context, issuer string, key Key) (Key, er
 }
 
 func (svc service) login(token string) (string, error) {
-	fmt.Printf("service-login 1 token %s\n", token)
 	c, err := svc.tokenizer.Parse(token)
 	if err != nil {
-		fmt.Printf("service-login 2\n")
 		return "", err
 	}
-	fmt.Printf("service-login 3\n")
 	// Only user key token is valid for login.
 	if c.Type != UserKey {
-		fmt.Printf("service-login 4\n")
 		return "", ErrUnauthorizedAccess
 	}
-	fmt.Printf("service-login 5\n")
 
 	if c.Secret == "" {
-		fmt.Printf("service-login 6\n")
 		return "", ErrUnauthorizedAccess
 	}
-	fmt.Printf("service-login 7\n")
 	return c.Secret, nil
 }

@@ -9,8 +9,6 @@ import (
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/authn"
 	"github.com/mainflux/mainflux/errors"
-
-	"fmt"
 )
 
 var (
@@ -189,20 +187,15 @@ func (svc usersService) GenerateResetToken(ctx context.Context, email, host stri
 }
 
 func (svc usersService) GenerateEmailVerificationToken(ctx context.Context, email, host string) errors.Error {
-	fmt.Printf("GenerateEmailVerificationToken 1: %s @ %s\n", email, host)
 	user, err := svc.users.RetrieveByID(ctx, email)
 	if err != nil || user.Email == "" {
-		fmt.Printf("GenerateEmailVerificationToken 2\n")
 		return ErrUserNotFound
 	}
-	fmt.Printf("GenerateEmailVerificationToken 3\n")
 
 	t, err := svc.issue(ctx, email, authn.EmailVerificationKey)
 	if err != nil {
-		fmt.Printf("GenerateEmailVerificationToken 4\n")
 		return errors.Wrap(ErrGeneratingVerificationToken, err)
 	}
-	fmt.Printf("GenerateEmailVerificationToken 5\n")
 	return svc.SendEmailVerification(ctx, host, email, t)
 }
 
@@ -225,7 +218,6 @@ func (svc usersService) ResetPassword(ctx context.Context, resetToken, password 
 }
 
 func (svc usersService) VerifyEmail(ctx context.Context, emailVerificationToken string) errors.Error {
-	fmt.Printf("VerifyEmail 1\n")
 	email, err := svc.identify(ctx, emailVerificationToken)
 	if err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
