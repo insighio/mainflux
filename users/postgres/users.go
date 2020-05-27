@@ -104,6 +104,24 @@ func (ur userRepository) UpdatePassword(ctx context.Context, email, password str
 	return nil
 }
 
+func (ur userRepository) VerifyEmail(ctx context.Context, email string) errors.Error {
+	user, err := ur.RetrieveByID(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	val, ok := user.Metadata["verified"]
+	if !ok || val == false {
+		//add verified tag in metadata and save user info back to the DB
+
+		user.Metadata["verified"] = true
+		err = ur.UpdateUser(ctx, user)
+		return err
+	}
+
+	return nil
+}
+
 // dbMetadata type for handling metadata properly in database/sql
 type dbMetadata map[string]interface{}
 

@@ -84,3 +84,19 @@ func (res passwChangeRes) Headers() map[string]string {
 func (res passwChangeRes) Empty() bool {
 	return false
 }
+
+type emailVerificationRes struct {
+	Msg string `json:"msg"`
+}
+
+func (res emailVerificationRes) Code() int {
+	return http.StatusCreated
+}
+
+func (res emailVerificationRes) Headers() map[string]string {
+	return map[string]string{}
+}
+
+func (res emailVerificationRes) Empty() bool {
+	return false
+}

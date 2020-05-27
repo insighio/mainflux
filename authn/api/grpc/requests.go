@@ -3,7 +3,9 @@
 
 package grpc
 
-import "github.com/mainflux/mainflux/authn"
+import (
+	"github.com/mainflux/mainflux/authn"
+)
 
 type identityReq struct {
 	token string
@@ -16,7 +18,8 @@ func (req identityReq) validate() error {
 	}
 	if req.kind != authn.UserKey &&
 		req.kind != authn.APIKey &&
-		req.kind != authn.RecoveryKey {
+		req.kind != authn.RecoveryKey &&
+		req.kind != authn.EmailVerificationKey {
 		return authn.ErrMalformedEntity
 	}
 
@@ -34,7 +37,8 @@ func (req issueReq) validate() error {
 	}
 	if req.keyType != authn.UserKey &&
 		req.keyType != authn.APIKey &&
-		req.keyType != authn.RecoveryKey {
+		req.keyType != authn.RecoveryKey &&
+		req.keyType != authn.EmailVerificationKey {
 		return authn.ErrMalformedEntity
 	}
 

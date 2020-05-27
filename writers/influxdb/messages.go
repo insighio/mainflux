@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 	"strings"
-	"fmt"
+//	"fmt"
 
 	"github.com/mainflux/mainflux/transformers/senml"
 	"github.com/mainflux/mainflux/writers"

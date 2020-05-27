@@ -72,6 +72,53 @@ func passwordResetEndpoint(svc users.Service) endpoint.Endpoint {
 	}
 }
 
+// Email Verification request endpoint.
+// When successful verification link is generated.
+// Link is generated using MF_TOKEN_RESET_ENDPOINT env.  // TODO??
+// and value from Referer header for host.
+// {Referer}+{MF_TOKEN_RESET_ENDPOINT}+{token=TOKEN}
+// http://mainflux.com/users/verify?token=xxxxxxxxxxx.  // this is the desired URL!
+// Email with a link is being sent to the user.
+// When user clicks on a link it should get the ui with a status notification
+// of the verification process
+func emailVerificationRequestEndpoint(svc users.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(emailVerificationReq)
+		if err := req.validate(); err != nil {
+			return nil, err
+		}
+
+		res := emailVerificationRes{}
+		email := req.Email
+
+		if err := svc.GenerateEmailVerificationToken(ctx, email, req.Host); err != nil {
+			return nil, err
+		}
+
+		res.Msg = MailSent
+		return res, nil
+	}
+}
+
+// This is endpoint that actually sets the user email flag as verified.
+// When user clicks on a link in email finally ends on this endpoint as explained in
+// the comment above.
+func emailVerificationEndpoint(svc users.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(emailVerificationTokenReq)
+		if err := req.validate(); err != nil {
+			return nil, err
+		}
+		res := emailVerificationRes{}
+
+		if err := svc.VerifyEmail(ctx, req.Token); err != nil {
+			return nil, err
+		}
+		res.Msg = ""
+		return res, nil
+	}
+}
+
 func userInfoEndpoint(svc users.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(viewUserInfoReq)

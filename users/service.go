@@ -40,9 +40,17 @@ var (
 	// for reseting password
 	ErrMissingResetToken = errors.New("error missing reset token")
 
+	// ErrMissingVerificationToken indicates malformed or missing reset token
+	// for verifying email
+	ErrMissingVerificationToken = errors.New("error missing verification token")
+
 	// ErrGeneratingResetToken indicates error in generating password recovery
 	// token
 	ErrGeneratingResetToken = errors.New("error missing reset token")
+
+	// ErrGeneratingResetToken indicates error in generating password recovery
+	// token
+	ErrGeneratingVerificationToken = errors.New("error missing verification token")
 
 	// ErrGetToken indicates error in getting signed token
 	ErrGetToken = errors.New("Get signed token failed")
@@ -70,6 +78,10 @@ type Service interface {
 	// host is used for generating reset link.
 	GenerateResetToken(_ context.Context, email, host string) errors.Error
 
+	// GenerateEmailVerificationToken email where mail will be sent.
+	// host is used for generating email verification link.
+	GenerateEmailVerificationToken(_ context.Context, email, host string) errors.Error
+
 	// ChangePassword change users password for authenticated user.
 	ChangePassword(_ context.Context, authToken, password, oldPassword string) errors.Error
 
@@ -79,6 +91,12 @@ type Service interface {
 
 	//SendPasswordReset sends reset password link to email
 	SendPasswordReset(_ context.Context, host, email, token string) errors.Error
+
+	//SendEmailVerification sends email verification link to email
+	SendEmailVerification(_ context.Context, host, email, token string) errors.Error
+
+	//Verify email of the corresponding user
+	VerifyEmail(_ context.Context, emailVerificationToken string) errors.Error
 }
 
 var _ Service = (*usersService)(nil)
@@ -168,6 +186,19 @@ func (svc usersService) GenerateResetToken(ctx context.Context, email, host stri
 	return svc.SendPasswordReset(ctx, host, email, t)
 }
 
+func (svc usersService) GenerateEmailVerificationToken(ctx context.Context, email, host string) errors.Error {
+	user, err := svc.users.RetrieveByID(ctx, email)
+	if err != nil || user.Email == "" {
+		return ErrUserNotFound
+	}
+
+	t, err := svc.issue(ctx, email, authn.EmailVerificationKey)
+	if err != nil {
+		return errors.Wrap(ErrGeneratingVerificationToken, err)
+	}
+	return svc.SendEmailVerification(ctx, host, email, t)
+}
+
 func (svc usersService) ResetPassword(ctx context.Context, resetToken, password string) errors.Error {
 	email, err := svc.identify(ctx, resetToken)
 	if err != nil {
@@ -184,6 +215,20 @@ func (svc usersService) ResetPassword(ctx context.Context, resetToken, password 
 		return err
 	}
 	return svc.users.UpdatePassword(ctx, email, password)
+}
+
+func (svc usersService) VerifyEmail(ctx context.Context, emailVerificationToken string) errors.Error {
+	email, err := svc.identify(ctx, emailVerificationToken)
+	if err != nil {
+		return errors.Wrap(ErrUnauthorizedAccess, err)
+	}
+
+	u, err := svc.users.RetrieveByID(ctx, email)
+	if err != nil || u.Email == "" {
+		return ErrUserNotFound
+	}
+
+	return svc.users.VerifyEmail(ctx, email)
 }
 
 func (svc usersService) ChangePassword(ctx context.Context, authToken, password, oldPassword string) errors.Error {
@@ -216,6 +261,12 @@ func (svc usersService) ChangePassword(ctx context.Context, authToken, password,
 func (svc usersService) SendPasswordReset(_ context.Context, host, email, token string) errors.Error {
 	to := []string{email}
 	return svc.email.SendPasswordReset(to, host, token)
+}
+
+// SendEmailVerification sends password recovery link to user
+func (svc usersService) SendEmailVerification(_ context.Context, host, email, token string) errors.Error {
+	to := []string{email}
+	return svc.email.SendEmailVerification(to, host, token)
 }
 
 func (svc usersService) identify(ctx context.Context, token string) (string, errors.Error) {
