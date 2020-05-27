@@ -19,3 +19,7 @@ func NewEmailer() users.Emailer {
 func (e *emailerMock) SendPasswordReset([]string, string, string) errors.Error {
 	return nil
 }
+
+func (e *emailerMock) SendEmailVerification([]string, string, string) errors.Error {
+	return nil
+}

@@ -45,9 +45,12 @@ func (c *consumer) consume(m *nats.Msg) {
 		return
 	}
 
+	// c.logger.Warn(fmt.Sprintf(" - NATS message: %s", string(m.Data)))
+	// c.logger.Warn(fmt.Sprintf(" - UNMARSHALED message: %s", string(msg.String())))
+
 	t, err := c.transformer.Transform(msg)
 	if err != nil {
-		c.logger.Warn(fmt.Sprintf("Failed to tranform received message: %s", err))
+		c.logger.Warn(fmt.Sprintf("Failed to tranform received message: %s, message: %s", err, string(msg.String())))
 		return
 	}
 	norm, ok := t.([]senml.Message)

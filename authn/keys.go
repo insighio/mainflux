@@ -22,6 +22,8 @@ const (
 	UserKey uint32 = iota
 	// RecoveryKey represents a key for resseting password.
 	RecoveryKey
+	// Verification Key for verifying registration email
+	EmailVerificationKey
 	// APIKey enables the one to act on behalf of the user.
 	APIKey
 )

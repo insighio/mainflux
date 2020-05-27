@@ -38,7 +38,7 @@ services:
       - mainflux-influxdb-volume:/var/lib/influxdb
 
   influxdb-writer:
-    image: mainflux/influxdb-writer:0.9.1
+    image: mainflux/influxdb-writer:latest
     container_name: mainflux-influxdb-writer
     depends_on:
       - influxdb

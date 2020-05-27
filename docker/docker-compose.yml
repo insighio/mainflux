@@ -54,7 +54,7 @@ services:
   authn-db:
     image: postgres:10.8-alpine
     container_name: mainflux-authn-db
-    restart: on-failure
+    restart: always
     environment:
       POSTGRES_USER: ${MF_AUTHN_DB_USER}
       POSTGRES_PASSWORD: ${MF_AUTHN_DB_PASS}
@@ -71,7 +71,7 @@ services:
       - authn-db
     expose:
       - ${MF_AUTHN_GRPC_PORT}
-    restart: on-failure
+    restart: always
     environment:
       MF_AUTHN_LOG_LEVEL: ${MF_AUTHN_LOG_LEVEL}
       MF_AUTHN_DB_HOST: authn-db
@@ -103,10 +103,11 @@ services:
       - mainflux-users-db-volume:/var/lib/postgresql/data
 
   users:
-    image: mainflux/users:0.10.0
+    image: mainflux/users:latest
     container_name: mainflux-users
     volumes:
       - ./users/emailer/templates/${MF_EMAIL_TEMPLATE}:/${MF_EMAIL_TEMPLATE}
+      - ./users/emailer/templates/${MF_EMAIL_VERIFY_TEMPLATE}:/${MF_EMAIL_VERIFY_TEMPLATE}
     depends_on:
       - users-db
       - authn
@@ -128,7 +129,9 @@ services:
       MF_EMAIL_FROM_ADDRESS: ${MF_EMAIL_FROM_ADDRESS}
       MF_EMAIL_FROM_NAME: ${MF_EMAIL_FROM_NAME}
       MF_EMAIL_TEMPLATE: ${MF_EMAIL_TEMPLATE}
+      MF_EMAIL_VERIFY_TEMPLATE: ${MF_EMAIL_VERIFY_TEMPLATE}
       MF_TOKEN_RESET_ENDPOINT: ${MF_TOKEN_RESET_ENDPOINT}
+      MF_TOKEN_VERIFY_ENDPOINT: ${MF_TOKEN_VERIFY_ENDPOINT}
       MF_AUTHN_URL: authn:${MF_AUTHN_GRPC_PORT}
     ports:
       - ${MF_USERS_HTTP_PORT}:${MF_USERS_HTTP_PORT}
@@ -262,33 +265,33 @@ services:
     networks:
       - mainflux-base-net
 
-#  ui:
-#    image: insigh-io/ui:latest
-#    container_name: insigh-io-ui
-#    restart: always
-#    ports:
-#      - ${UI_INSIGHIO_PORT}:${UI_INSIGHIO_PORT}
-#    networks:
-#      - mainflux-base-net
-#    environment:
-#      UI_INSIGHIO_PORT: ${UI_INSIGHIO_PORT}
+  ui:
+    image: insigh-io/ui:latest
+    container_name: insigh-io-ui
+    restart: always
+    ports:
+      - ${INSIGHIO_UI_PORT}:${INSIGHIO_UI_PORT}
+    networks:
+      - mainflux-base-net
+    environment:
+      INSIGHIO_UI_PORT: ${INSIGHIO_UI_PORT}
 
-#  mf-rproxy:
-#    image: insigh-io/mf-rproxy:latest
-#    container_name: insigh-io-mf-rproxy
-#    restart: always
-#    ports:
-#      - ${RPROXY_PORT}:${RPROXY_PORT}
-#    networks:
-#      - mainflux-base-net
-#    environment:
-#      RPROXY_PORT: ${RPROXY_PORT}
-#      INSIGHIO_API_IP: ${INSIGHIO_API_IP}
-#      INSIGHIO_PROXY_DB_USER: ${INSIGHIO_PROXY_DB_USER}
-#      INSIGHIO_PROXY_DB_PASS: ${INSIGHIO_PROXY_DB_PASS}
+  mf-rproxy:
+    image: insigh-io/mf-rproxy:latest
+    container_name: insigh-io-mf-rproxy
+    restart: always
+    ports:
+      - ${INSIGHIO_RPROXY_PORT}:${INSIGHIO_RPROXY_PORT}
+    networks:
+      - mainflux-base-net
+    environment:
+      INSIGHIO_RPROXY_PORT: ${INSIGHIO_RPROXY_PORT}
+      INSIGHIO_API_IP: ${INSIGHIO_API_IP}
+      INSIGHIO_PROXY_DB_USER: ${INSIGHIO_PROXY_DB_USER}
+      INSIGHIO_PROXY_DB_PASS: ${INSIGHIO_PROXY_DB_PASS}
 
   mainflux-ui:
-    image: mainflux/ui:0.11.0
+    image: mainflux/ui-amd64:latest
     container_name: mainflux-ui
     restart: always
     ports:

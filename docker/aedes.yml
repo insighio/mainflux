@@ -14,7 +14,7 @@ services:
   mqtt-redis:
     image: redis:5.0-alpine
     container_name: mainflux-mqtt-redis
-    restart: on-failure
+    restart: always
     networks:
       - mainflux-base-net
     volumes:
@@ -27,7 +27,7 @@ services:
       - things
       - nats
       - mqtt-redis
-    restart: on-failure
+    restart: always
     environment:
       MF_MQTT_ADAPTER_LOG_LEVEL: ${MF_MQTT_ADAPTER_LOG_LEVEL}
       MF_MQTT_INSTANCE_ID: mqtt-adapter-1

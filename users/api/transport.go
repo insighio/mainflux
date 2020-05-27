@@ -46,6 +46,20 @@ func MakeHandler(svc users.Service, tracer opentracing.Tracer, l log.Logger) htt
 
 	mux := bone.New()
 
+	mux.Post("/users/verify-request", kithttp.NewServer(
+		kitot.TraceServer(tracer, "ver-req")(emailVerificationRequestEndpoint(svc)),
+		decodeEmailVerificationRequest,
+		encodeResponse,
+		opts...,
+	))
+
+	mux.Post("/users/verify", kithttp.NewServer(
+		kitot.TraceServer(tracer, "verify")(emailVerificationEndpoint(svc)),
+		decodeEmailVerification,
+		encodeResponse,
+		opts...,
+	))
+
 	mux.Post("/users", kithttp.NewServer(
 		kitot.TraceServer(tracer, "register")(registrationEndpoint(svc)),
 		decodeCredentials,
@@ -130,6 +144,38 @@ func decodeCredentials(_ context.Context, r *http.Request) (interface{}, error) 
 	}
 
 	return userReq{user}, nil
+}
+
+func decodeEmailVerificationRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		logger.Warn("Invalid or missing content type.")
+		return nil, ErrUnsupportedContentType
+	}
+
+	var req emailVerificationReq
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Warn(fmt.Sprintf("Failed to decode reset request: %s", err))
+		return nil, errors.Wrap(ErrFailedDecode, err)
+	}
+
+	req.Host = r.Header.Get("Referer")
+	return req, nil
+}
+
+func decodeEmailVerification(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		logger.Warn("Invalid or missing content type.")
+		return nil, ErrUnsupportedContentType
+	}
+
+	var req emailVerificationTokenReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Warn(fmt.Sprintf("Failed to decode reset request: %s", err))
+		return nil, errors.Wrap(ErrFailedDecode, err)
+	}
+
+	return req, nil
 }
 
 func decodePasswordResetRequest(_ context.Context, r *http.Request) (interface{}, error) {
