@@ -12,6 +12,9 @@ networks:
   docker_mainflux-base-net:
     external: true
 
+volumes:
+  mainflux-lora-redis-volume:
+
 services:
   lora-redis:
     image: redis:5.0-alpine
@@ -19,6 +22,8 @@ services:
     restart: always
     networks:
       - docker_mainflux-base-net
+    volumes:
+      - mainflux-lora-redis-volume:/data
 
   lora-adapter:
     image: mainflux/lora:0.9.1
