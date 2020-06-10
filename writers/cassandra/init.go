@@ -16,7 +16,7 @@ const table = `CREATE TABLE IF NOT EXISTS messages (
     	value double,
     	string_value text,
         bool_value boolean,
-        data_value text,
+        data_value blob,
     	sum double,
     	time double,
     	update_time double,
@@ -27,8 +27,8 @@ const table = `CREATE TABLE IF NOT EXISTS messages (
 type DBConfig struct {
 	Hosts    []string
 	Keyspace string
-	Username string
-	Password string
+	User     string
+	Pass     string
 	Port     int
 }
 
@@ -38,8 +38,8 @@ func Connect(cfg DBConfig) (*gocql.Session, error) {
 	cluster.Keyspace = cfg.Keyspace
 	cluster.Consistency = gocql.Quorum
 	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: cfg.Username,
-		Password: cfg.Password,
+		Username: cfg.User,
+		Password: cfg.Pass,
 	}
 	cluster.Port = cfg.Port
 

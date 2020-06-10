@@ -21,7 +21,7 @@ import (
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/coap"
 	log "github.com/mainflux/mainflux/logger"
-	"github.com/mainflux/mainflux/transformers/senml"
+	"github.com/mainflux/mainflux/messaging"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -218,27 +218,22 @@ func receive(svc coap.Service, msg *gocoap.Message) *gocoap.Message {
 		return res
 	}
 
-	ct, err := contentType(msg)
-	if err != nil {
-		ct = ""
-	}
-
 	publisher, err := authorize(msg, res, chanID)
 	if err != nil {
 		res.Code = gocoap.Forbidden
 		return res
 	}
 
-	m := mainflux.Message{
-		Channel:     chanID,
-		Subtopic:    subtopic,
-		Publisher:   publisher,
-		ContentType: ct,
-		Protocol:    protocol,
-		Payload:     msg.Payload,
+	m := messaging.Message{
+		Channel:   chanID,
+		Subtopic:  subtopic,
+		Publisher: publisher,
+		Protocol:  protocol,
+		Payload:   msg.Payload,
+		Created:   time.Now().UnixNano(),
 	}
 
-	if err := svc.Publish(context.Background(), "", m); err != nil {
+	if err := svc.Publish(m); err != nil {
 		res.Code = gocoap.InternalServerError
 	}
 
@@ -290,7 +285,7 @@ func observe(svc coap.Service, responses chan<- string) handler {
 			res.AddOption(gocoap.Observe, 1)
 			o := coap.NewObserver()
 			if err := svc.Subscribe(chanID, subtopic, obsID, o); err != nil {
-				logger.Warn(fmt.Sprintf("Failed to subscribe to NATS subject: %s", err))
+				logger.Warn(err.Error())
 				res.Code = gocoap.InternalServerError
 				return res
 			}
@@ -332,15 +327,6 @@ func handleMessage(conn *net.UDPConn, addr *net.UDPAddr, o *coap.Observer, msg *
 
 		observeVal := buff.Bytes()
 		notifyMsg.SetOption(gocoap.Observe, observeVal[len(observeVal)-3:])
-
-		coapCT := senMLJSON
-		switch msg.ContentType {
-		case senml.JSON:
-			coapCT = senMLJSON
-		case senml.CBOR:
-			coapCT = senMLCBOR
-		}
-		notifyMsg.SetOption(gocoap.ContentFormat, coapCT)
 
 		if err := gocoap.Transmit(conn, addr, notifyMsg); err != nil {
 			logger.Warn(fmt.Sprintf("Failed to send message to observer: %s", err))
@@ -385,21 +371,4 @@ func ping(svc coap.Service, obsID string, conn *net.UDPConn, addr *net.UDPAddr, 
 			return
 		}
 	}
-}
-
-func contentType(msg *gocoap.Message) (string, error) {
-	ctid, ok := msg.Option(gocoap.ContentFormat).(gocoap.MediaType)
-	if !ok {
-		return "", errBadRequest
-	}
-
-	ct := ""
-	switch ctid {
-	case senMLJSON:
-		ct = senml.JSON
-	case senMLCBOR:
-		ct = senml.CBOR
-	}
-
-	return ct, nil
 }

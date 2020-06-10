@@ -9,10 +9,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/mainflux/mainflux/errors"
 )
 
 func (sdk mfSDK) SendMessage(chanName, msg, token string) error {
-
 	chanNameParts := strings.SplitN(chanName, ".", 2)
 	chanID := chanNameParts[0]
 	subtopicPart := ""
@@ -34,14 +35,7 @@ func (sdk mfSDK) SendMessage(chanName, msg, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusAccepted {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ErrInvalidArgs
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		default:
-			return ErrFailedPublish
-		}
+		return errors.Wrap(ErrFailedPublish, errors.New(resp.Status))
 	}
 
 	return nil
@@ -74,27 +68,15 @@ func (sdk mfSDK) ReadMessages(chanName, token string) (MessagesPage, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return MessagesPage{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return MessagesPage{}, ErrUnauthorized
-		default:
-			return MessagesPage{}, ErrFailedRead
-		}
+		return MessagesPage{}, errors.Wrap(ErrFailedRead, errors.New(resp.Status))
 	}
 
-	mp := messagesPageRes{}
+	var mp MessagesPage
 	if err := json.Unmarshal(body, &mp); err != nil {
 		return MessagesPage{}, err
 	}
 
-	return MessagesPage{
-		Total:    mp.Total,
-		Offset:   mp.Offset,
-		Limit:    mp.Limit,
-		Messages: mp.Messages,
-	}, nil
+	return mp, nil
 }
 
 func (sdk *mfSDK) SetContentType(ct ContentType) error {

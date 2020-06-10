@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/readers"
 
 	influxdata "github.com/influxdata/influxdb/client/v2"
@@ -15,6 +16,8 @@ import (
 )
 
 const countCol = "count"
+
+var errReadMessages = errors.New("faled to read messages from influxdb database")
 
 var _ readers.MessageRepository = (*influxRepository)(nil)
 
@@ -43,10 +46,10 @@ func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query
 
 	resp, err := repo.client.Query(q)
 	if err != nil {
-		return readers.MessagesPage{}, err
+		return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 	}
 	if resp.Error() != nil {
-		return readers.MessagesPage{}, resp.Error()
+		return readers.MessagesPage{}, errors.Wrap(errReadMessages, resp.Error())
 	}
 
 	if len(resp.Results) < 1 || len(resp.Results[0].Series) < 1 {
@@ -60,7 +63,7 @@ func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query
 
 	total, err := repo.count(condition)
 	if err != nil {
-		return readers.MessagesPage{}, err
+		return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 	}
 
 	return readers.MessagesPage{
@@ -135,7 +138,7 @@ func fmtCondition(chanID string, query map[string]string) string {
 
 // ParseMessage and parseValues are util methods. Since InfluxDB client returns
 // results in form of rows and columns, this obscure message conversion is needed
-// to return actual []mainflux.Message from the query result.
+// to return actual []broker.Message from the query result.
 func parseValues(value interface{}, name string, msg *senml.Message) {
 	if name == "sum" && value != nil {
 		if valSum, ok := value.(json.Number); ok {
@@ -193,12 +196,12 @@ func parseMessage(names []string, fields []interface{}) senml.Message {
 			}
 		case float64:
 			if name == "time" {
-				t, err := time.Parse(time.RFC3339, fields[i].(string))
+				t, err := time.Parse(time.RFC3339Nano, fields[i].(string))
 				if err != nil {
 					continue
 				}
 
-				v := float64(t.Unix())
+				v := float64(t.UnixNano()) / float64(1e9)
 				msgField.SetFloat(v)
 				continue
 			}

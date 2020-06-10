@@ -1,10 +1,10 @@
 # This script contains commands to be executed by the CI tool.
 NPROC=$(nproc)
 GO_VERSION=1.13
-PROTOC_VERSION=3.11.1
-PROTOC_GEN_VERSION=v1.3.2
+PROTOC_VERSION=3.11.4
+PROTOC_GEN_VERSION=v1.4.1
 PROTOC_GOFAST_VERSION=v1.3.1
-GRPC_VERSION=v1.24.0
+GRPC_VERSION=v1.29.1
 
 function version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
 
@@ -68,14 +68,22 @@ setup_mf() {
 	make -j$NPROC
 }
 
+setup_lint() {
+	# binary will be $(go env GOPATH)/bin/golangci-lint
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
+}
+
 setup() {
 	echo "Setting up..."
 	update_go
 	setup_protoc
 	setup_mf
+	setup_lint
 }
 
 run_test() {
+	echo "Running lint..."
+	golangci-lint run --no-config --disable-all --enable=golint
 	echo "Running tests..."
 	echo "" > coverage.txt
 	for d in $(go list ./... | grep -v 'vendor\|cmd'); do

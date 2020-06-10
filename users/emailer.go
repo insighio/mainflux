@@ -3,11 +3,9 @@
 
 package users
 
-import "github.com/mainflux/mainflux/errors"
-
 // Emailer wrapper around the email
 type Emailer interface {
-	SendPasswordReset(To []string, host, token string) errors.Error
+	SendPasswordReset(To []string, host, token string) error
 
-	SendEmailVerification(To []string, host, token string) errors.Error
+	SendEmailVerification(To []string, host, token string) error
 }

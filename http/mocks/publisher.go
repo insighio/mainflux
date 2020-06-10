@@ -4,20 +4,16 @@
 package mocks
 
 import (
-	"context"
-
-	"github.com/mainflux/mainflux"
+	"github.com/mainflux/mainflux/messaging"
 )
-
-var _ (mainflux.MessagePublisher) = (*mockPublisher)(nil)
 
 type mockPublisher struct{}
 
 // NewPublisher returns mock message publisher.
-func NewPublisher() mainflux.MessagePublisher {
+func NewPublisher() messaging.Publisher {
 	return mockPublisher{}
 }
 
-func (pub mockPublisher) Publish(_ context.Context, _ string, msg mainflux.Message) error {
+func (pub mockPublisher) Publish(topic string, msg messaging.Message) error {
 	return nil
 }

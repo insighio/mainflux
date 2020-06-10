@@ -5,6 +5,7 @@ package sdk_test
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -17,13 +18,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newMessageService(cc mainflux.ThingsServiceClient) mainflux.MessagePublisher {
+func newMessageService(cc mainflux.ThingsServiceClient) adapter.Service {
 	pub := mocks.NewPublisher()
 	return adapter.New(pub, cc)
 }
 
-func newMessageServer(pub mainflux.MessagePublisher) *httptest.Server {
-	mux := api.MakeHandler(pub, mocktracer.New())
+func newMessageServer(svc adapter.Service) *httptest.Server {
+	mux := api.MakeHandler(svc, mocktracer.New())
 	return httptest.NewServer(mux)
 }
 
@@ -63,13 +64,13 @@ func TestSendMessage(t *testing.T) {
 			chanID: chanID,
 			msg:    msg,
 			auth:   "",
-			err:    sdk.ErrUnauthorized,
+			err:    createError(sdk.ErrFailedPublish, http.StatusForbidden),
 		},
 		"publish message with invalid authorization token": {
 			chanID: chanID,
 			msg:    msg,
 			auth:   invalidToken,
-			err:    sdk.ErrUnauthorized,
+			err:    createError(sdk.ErrFailedPublish, http.StatusForbidden),
 		},
 		"publish message with wrong content type": {
 			chanID: chanID,
@@ -81,13 +82,13 @@ func TestSendMessage(t *testing.T) {
 			chanID: "",
 			msg:    msg,
 			auth:   atoken,
-			err:    sdk.ErrInvalidArgs,
+			err:    createError(sdk.ErrFailedPublish, http.StatusBadRequest),
 		},
 		"publish message unable to authorize": {
 			chanID: chanID,
 			msg:    msg,
 			auth:   mocks.ServiceErrToken,
-			err:    sdk.ErrFailedPublish,
+			err:    createError(sdk.ErrFailedPublish, http.StatusServiceUnavailable),
 		},
 	}
 	for desc, tc := range cases {

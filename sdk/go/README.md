@@ -26,8 +26,8 @@ func (sdk *MfxSDK) Channel(id, token string) (things.Channel, error)
 func (sdk *MfxSDK) Channels(token string) ([]things.Channel, error)
     Channels - gets all channels
 
-func (sdk *MfxSDK) ConnectThing(thingID, chanID, token string) error
-    ConnectThing - connect thing to a channel
+func (sdk *MfxSDK) Connect(struct{[]string, []string}, token string) error
+    Connect - connect things to channels
 
 func (sdk *MfxSDK) CreateChannel(data, token string) (string, error)
     CreateChannel - creates new channel and generates UUID
@@ -40,6 +40,15 @@ func (sdk *MfxSDK) CreateToken(user, pwd string) (string, error)
 
 func (sdk *MfxSDK) CreateUser(user, pwd string) error
     CreateUser - create user
+
+func (sdk *MfxSDK) User(pwd string) (user, error)
+    User - gets user
+
+func (sdk *MfxSDK) UpdateUser(user, pwd string) error
+    UpdateUser - update user
+
+func (sdk *MfxSDK) UpdatePassword(user, pwd string) error
+    UpdatePassword - update user password
 
 func (sdk *MfxSDK) DeleteChannel(id, token string) error
     DeleteChannel - removes channel

@@ -9,27 +9,34 @@ import (
 	"context"
 
 	"github.com/mainflux/mainflux"
+	"github.com/mainflux/mainflux/messaging"
 )
 
-var _ mainflux.MessagePublisher = (*adapterService)(nil)
+// Service specifies coap service API.
+type Service interface {
+	// Publish Messssage
+	Publish(ctx context.Context, token string, msg messaging.Message) error
+}
+
+var _ Service = (*adapterService)(nil)
 
 type adapterService struct {
-	pub    mainflux.MessagePublisher
-	things mainflux.ThingsServiceClient
+	publisher messaging.Publisher
+	things    mainflux.ThingsServiceClient
 }
 
 // New instantiates the HTTP adapter implementation.
-func New(pub mainflux.MessagePublisher, things mainflux.ThingsServiceClient) mainflux.MessagePublisher {
+func New(publisher messaging.Publisher, things mainflux.ThingsServiceClient) Service {
 	return &adapterService{
-		pub:    pub,
-		things: things,
+		publisher: publisher,
+		things:    things,
 	}
 }
 
-func (as *adapterService) Publish(ctx context.Context, token string, msg mainflux.Message) error {
+func (as *adapterService) Publish(ctx context.Context, token string, msg messaging.Message) error {
 	ar := &mainflux.AccessByKeyReq{
 		Token:  token,
-		ChanID: msg.GetChannel(),
+		ChanID: msg.Channel,
 	}
 	thid, err := as.things.CanAccessByKey(ctx, ar)
 	if err != nil {
@@ -37,5 +44,5 @@ func (as *adapterService) Publish(ctx context.Context, token string, msg mainflu
 	}
 	msg.Publisher = thid.GetValue()
 
-	return as.pub.Publish(ctx, token, msg)
+	return as.publisher.Publish(msg.Channel, msg)
 }

@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const thingsEP = "things"
-
 var cmdThings = []cobra.Command{
 	cobra.Command{
 		Use:   "create",
@@ -120,10 +118,9 @@ var cmdThings = []cobra.Command{
 			}
 
 			connIDs := mfxsdk.ConnectionIDs{
-				[]string{args[0]},
-				[]string{args[1]},
+				ChannelIDs: []string{args[1]},
+				ThingIDs:   []string{args[0]},
 			}
-
 			if err := sdk.Connect(connIDs, args[2]); err != nil {
 				logError(err)
 				return

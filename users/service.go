@@ -24,20 +24,20 @@ var (
 	// when accessing a protected resource.
 	ErrUnauthorizedAccess = errors.New("missing or invalid credentials provided")
 
-	// ErrNotFound indicates a non-existent entity request
+	// ErrNotFound indicates a non-existent entity request.
 	ErrNotFound = errors.New("non-existent entity")
 
-	// ErrUserNotFound indicates a non-existent user request
+	// ErrUserNotFound indicates a non-existent user request.
 	ErrUserNotFound = errors.New("non-existent user")
 
-	// ErrScanMetadata indicates problem with metadata in db
+	// ErrScanMetadata indicates problem with metadata in db.
 	ErrScanMetadata = errors.New("Failed to scan metadata")
 
-	// ErrMissingEmail indicates missing email for password reset request
+	// ErrMissingEmail indicates missing email for password reset request.
 	ErrMissingEmail = errors.New("missing email for password reset")
 
 	// ErrMissingResetToken indicates malformed or missing reset token
-	// for reseting password
+	// for reseting password.
 	ErrMissingResetToken = errors.New("error missing reset token")
 
 	// ErrMissingVerificationToken indicates malformed or missing reset token
@@ -46,6 +46,7 @@ var (
 
 	// ErrGeneratingResetToken indicates error in generating password recovery
 	// token
+	// TODO: may be this has been deleted from upstream
 	ErrGeneratingResetToken = errors.New("error missing reset token")
 
 	// ErrGeneratingResetToken indicates error in generating password recovery
@@ -53,6 +54,10 @@ var (
 	ErrGeneratingVerificationToken = errors.New("error missing verification token")
 
 	// ErrGetToken indicates error in getting signed token
+	// ErrRecoveryToken indicates error in generating password recovery token.
+	ErrRecoveryToken = errors.New("error generating password recovery token")
+
+	// ErrGetToken indicates error in getting signed token.
 	ErrGetToken = errors.New("Get signed token failed")
 )
 
@@ -61,42 +66,42 @@ var (
 type Service interface {
 	// Register creates new user account. In case of the failed registration, a
 	// non-nil error value is returned.
-	Register(context.Context, User) errors.Error
+	Register(ctx context.Context, user User) error
 
 	// Login authenticates the user given its credentials. Successful
 	// authentication generates new access token. Failed invocations are
 	// identified by the non-nil error values in the response.
-	Login(context.Context, User) (string, errors.Error)
+	Login(ctx context.Context, user User) (string, error)
 
-	// Get authenticated user info for the given token
-	UserInfo(ctx context.Context, token string) (User, errors.Error)
+	// Get authenticated user info for the given token.
+	UserInfo(ctx context.Context, token string) (User, error)
 
-	// UpdateUser updates the user metadata
-	UpdateUser(ctx context.Context, token string, user User) errors.Error
+	// UpdateUser updates the user metadata.
+	UpdateUser(ctx context.Context, token string, user User) error
 
 	// GenerateResetToken email where mail will be sent.
 	// host is used for generating reset link.
-	GenerateResetToken(_ context.Context, email, host string) errors.Error
+	GenerateResetToken(ctx context.Context, email, host string) error
 
 	// GenerateEmailVerificationToken email where mail will be sent.
 	// host is used for generating email verification link.
-	GenerateEmailVerificationToken(_ context.Context, email, host string) errors.Error
+	GenerateEmailVerificationToken(ctx context.Context, email, host string) error
 
 	// ChangePassword change users password for authenticated user.
-	ChangePassword(_ context.Context, authToken, password, oldPassword string) errors.Error
+	ChangePassword(ctx context.Context, authToken, password, oldPassword string) error
 
 	// ResetPassword change users password in reset flow.
 	// token can be authentication token or password reset token.
-	ResetPassword(_ context.Context, resetToken, password string) errors.Error
+	ResetPassword(ctx context.Context, resetToken, password string) error
 
 	//SendPasswordReset sends reset password link to email
-	SendPasswordReset(_ context.Context, host, email, token string) errors.Error
+	SendPasswordReset(_ context.Context, host, email, token string) error
 
 	//SendEmailVerification sends email verification link to email
-	SendEmailVerification(_ context.Context, host, email, token string) errors.Error
+	SendEmailVerification(_ context.Context, host, email, token string) error
 
 	//Verify email of the corresponding user
-	VerifyEmail(_ context.Context, emailVerificationToken string) errors.Error
+	VerifyEmail(_ context.Context, emailVerificationToken string) error
 }
 
 var _ Service = (*usersService)(nil)
@@ -118,7 +123,7 @@ func New(users UserRepository, hasher Hasher, auth mainflux.AuthNServiceClient, 
 	}
 }
 
-func (svc usersService) Register(ctx context.Context, user User) errors.Error {
+func (svc usersService) Register(ctx context.Context, user User) error {
 	hash, err := svc.hasher.Hash(user.Password)
 	if err != nil {
 		return errors.Wrap(ErrMalformedEntity, err)
@@ -128,7 +133,7 @@ func (svc usersService) Register(ctx context.Context, user User) errors.Error {
 	return svc.users.Save(ctx, user)
 }
 
-func (svc usersService) Login(ctx context.Context, user User) (string, errors.Error) {
+func (svc usersService) Login(ctx context.Context, user User) (string, error) {
 	dbUser, err := svc.users.RetrieveByID(ctx, user.Email)
 	if err != nil {
 		return "", errors.Wrap(ErrUnauthorizedAccess, err)
@@ -141,7 +146,7 @@ func (svc usersService) Login(ctx context.Context, user User) (string, errors.Er
 	return svc.issue(ctx, dbUser.Email, authn.UserKey)
 }
 
-func (svc usersService) UserInfo(ctx context.Context, token string) (User, errors.Error) {
+func (svc usersService) UserInfo(ctx context.Context, token string) (User, error) {
 	id, err := svc.identify(ctx, token)
 	if err != nil {
 		return User{}, err
@@ -159,7 +164,7 @@ func (svc usersService) UserInfo(ctx context.Context, token string) (User, error
 	}, nil
 }
 
-func (svc usersService) UpdateUser(ctx context.Context, token string, u User) errors.Error {
+func (svc usersService) UpdateUser(ctx context.Context, token string, u User) error {
 	email, err := svc.identify(ctx, token)
 	if err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
@@ -173,7 +178,7 @@ func (svc usersService) UpdateUser(ctx context.Context, token string, u User) er
 	return svc.users.UpdateUser(ctx, user)
 }
 
-func (svc usersService) GenerateResetToken(ctx context.Context, email, host string) errors.Error {
+func (svc usersService) GenerateResetToken(ctx context.Context, email, host string) error {
 	user, err := svc.users.RetrieveByID(ctx, email)
 	if err != nil || user.Email == "" {
 		return ErrUserNotFound
@@ -181,12 +186,12 @@ func (svc usersService) GenerateResetToken(ctx context.Context, email, host stri
 
 	t, err := svc.issue(ctx, email, authn.RecoveryKey)
 	if err != nil {
-		return errors.Wrap(ErrGeneratingResetToken, err)
+		return errors.Wrap(ErrRecoveryToken, err)
 	}
 	return svc.SendPasswordReset(ctx, host, email, t)
 }
 
-func (svc usersService) GenerateEmailVerificationToken(ctx context.Context, email, host string) errors.Error {
+func (svc usersService) GenerateEmailVerificationToken(ctx context.Context, email, host string) error {
 	user, err := svc.users.RetrieveByID(ctx, email)
 	if err != nil || user.Email == "" {
 		return ErrUserNotFound
@@ -199,7 +204,7 @@ func (svc usersService) GenerateEmailVerificationToken(ctx context.Context, emai
 	return svc.SendEmailVerification(ctx, host, email, t)
 }
 
-func (svc usersService) ResetPassword(ctx context.Context, resetToken, password string) errors.Error {
+func (svc usersService) ResetPassword(ctx context.Context, resetToken, password string) error {
 	email, err := svc.identify(ctx, resetToken)
 	if err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
@@ -217,7 +222,7 @@ func (svc usersService) ResetPassword(ctx context.Context, resetToken, password 
 	return svc.users.UpdatePassword(ctx, email, password)
 }
 
-func (svc usersService) VerifyEmail(ctx context.Context, emailVerificationToken string) errors.Error {
+func (svc usersService) VerifyEmail(ctx context.Context, emailVerificationToken string) error {
 	email, err := svc.identify(ctx, emailVerificationToken)
 	if err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
@@ -231,7 +236,7 @@ func (svc usersService) VerifyEmail(ctx context.Context, emailVerificationToken 
 	return svc.users.VerifyEmail(ctx, email)
 }
 
-func (svc usersService) ChangePassword(ctx context.Context, authToken, password, oldPassword string) errors.Error {
+func (svc usersService) ChangePassword(ctx context.Context, authToken, password, oldPassword string) error {
 	email, err := svc.identify(ctx, authToken)
 	if err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
@@ -258,18 +263,18 @@ func (svc usersService) ChangePassword(ctx context.Context, authToken, password,
 }
 
 // SendPasswordReset sends password recovery link to user
-func (svc usersService) SendPasswordReset(_ context.Context, host, email, token string) errors.Error {
+func (svc usersService) SendPasswordReset(_ context.Context, host, email, token string) error {
 	to := []string{email}
 	return svc.email.SendPasswordReset(to, host, token)
 }
 
 // SendEmailVerification sends password recovery link to user
-func (svc usersService) SendEmailVerification(_ context.Context, host, email, token string) errors.Error {
+func (svc usersService) SendEmailVerification(_ context.Context, host, email, token string) error {
 	to := []string{email}
 	return svc.email.SendEmailVerification(to, host, token)
 }
 
-func (svc usersService) identify(ctx context.Context, token string) (string, errors.Error) {
+func (svc usersService) identify(ctx context.Context, token string) (string, error) {
 	email, err := svc.auth.Identify(ctx, &mainflux.Token{Value: token})
 	if err != nil {
 		return "", errors.Wrap(ErrUnauthorizedAccess, err)
@@ -277,7 +282,7 @@ func (svc usersService) identify(ctx context.Context, token string) (string, err
 	return email.GetValue(), nil
 }
 
-func (svc usersService) issue(ctx context.Context, email string, keyType uint32) (string, errors.Error) {
+func (svc usersService) issue(ctx context.Context, email string, keyType uint32) (string, error) {
 	key, err := svc.auth.Issue(ctx, &mainflux.IssueReq{Issuer: email, Type: keyType})
 	if err != nil {
 		return "", errors.Wrap(ErrUserNotFound, err)

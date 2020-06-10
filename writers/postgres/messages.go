@@ -5,21 +5,24 @@ package postgres
 
 import (
 	"context"
-	"errors"
 
 	"github.com/gofrs/uuid"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq" // required for DB access
+	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/transformers/senml"
 	"github.com/mainflux/mainflux/writers"
 )
 
 const errInvalid = "invalid_text_representation"
 
-// ErrInvalidMessage indicates that service received message that
-// doesn't fit required format.
-var ErrInvalidMessage = errors.New("invalid message representation")
+var (
+	// ErrInvalidMessage indicates that service received message that
+	// doesn't fit required format.
+	ErrInvalidMessage = errors.New("invalid message representation")
+	errSaveMessage    = errors.New("failed to save message to postgres database")
+	errTransRollback  = errors.New("failed to rollback transaction")
+)
 
 var _ writers.MessageRepository = (*postgresRepo)(nil)
 
@@ -32,7 +35,7 @@ func New(db *sqlx.DB) writers.MessageRepository {
 	return &postgresRepo{db: db}
 }
 
-func (pr postgresRepo) Save(messages ...senml.Message) error {
+func (pr postgresRepo) Save(messages ...senml.Message) (err error) {
 	q := `INSERT INTO messages (id, channel, subtopic, publisher, protocol,
     name, unit, value, string_value, bool_value, data_value, sum,
     time, update_time)
@@ -42,13 +45,26 @@ func (pr postgresRepo) Save(messages ...senml.Message) error {
 
 	tx, err := pr.db.BeginTxx(context.Background(), nil)
 	if err != nil {
-		return err
+		return errors.Wrap(errSaveMessage, err)
 	}
+	defer func() {
+		if err != nil {
+			if txErr := tx.Rollback(); txErr != nil {
+				err = errors.Wrap(err, errors.Wrap(errTransRollback, txErr))
+			}
+			return
+		}
+
+		if err = tx.Commit(); err != nil {
+			err = errors.Wrap(errSaveMessage, err)
+		}
+		return
+	}()
 
 	for _, msg := range messages {
 		dbth, err := toDBMessage(msg)
 		if err != nil {
-			return err
+			return errors.Wrap(errSaveMessage, err)
 		}
 
 		if _, err := tx.NamedExec(q, dbth); err != nil {
@@ -56,15 +72,14 @@ func (pr postgresRepo) Save(messages ...senml.Message) error {
 			if ok {
 				switch pqErr.Code.Name() {
 				case errInvalid:
-					return ErrInvalidMessage
+					return errors.Wrap(errSaveMessage, ErrInvalidMessage)
 				}
 			}
 
-			return err
+			return errors.Wrap(errSaveMessage, err)
 		}
 	}
-
-	return tx.Commit()
+	return err
 }
 
 type dbMessage struct {

@@ -1,0 +1,20 @@
+[bootstrap]
+  content = "{\"log_level\":\"info\",\"http_port\":\"9003\",\"mqtt_url\":\"localhost:1883\",\"edgex_url\":\"http://localhost:48090/api/v1/\",\"nats_url\":\"localhost:4222\"}"
+
+[[things]]
+  name = "thing"
+
+  [things.metadata]
+    external_id = "xxxxxx"
+
+[[channels]]
+  name = "control-channel"
+
+  [channels.metadata]
+    type = "control"
+
+[[channels]]
+  name = "data-channel"
+
+  [channels.metadata]
+    type = "data"

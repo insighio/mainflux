@@ -10,15 +10,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/mainflux/mainflux/errors"
 )
 
 const thingsEndpoint = "things"
 const connectEndpoint = "connect"
 
-func (sdk mfSDK) CreateThing(thing Thing, token string) (string, error) {
-	data, err := json.Marshal(thing)
+func (sdk mfSDK) CreateThing(t Thing, token string) (string, error) {
+	data, err := json.Marshal(t)
 	if err != nil {
-		return "", ErrInvalidArgs
+		return "", err
 	}
 
 	url := createURL(sdk.baseURL, sdk.thingsPrefix, thingsEndpoint)
@@ -35,14 +37,7 @@ func (sdk mfSDK) CreateThing(thing Thing, token string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return "", ErrInvalidArgs
-		case http.StatusForbidden:
-			return "", ErrUnauthorized
-		default:
-			return "", ErrFailedCreation
-		}
+		return "", errors.Wrap(ErrFailedCreation, errors.New(resp.Status))
 	}
 
 	id := strings.TrimPrefix(resp.Header.Get("Location"), fmt.Sprintf("/%s/", thingsEndpoint))
@@ -52,7 +47,7 @@ func (sdk mfSDK) CreateThing(thing Thing, token string) (string, error) {
 func (sdk mfSDK) CreateThings(things []Thing, token string) ([]Thing, error) {
 	data, err := json.Marshal(things)
 	if err != nil {
-		return []Thing{}, ErrInvalidArgs
+		return []Thing{}, err
 	}
 
 	endpoint := fmt.Sprintf("%s/%s", thingsEndpoint, "bulk")
@@ -70,14 +65,7 @@ func (sdk mfSDK) CreateThings(things []Thing, token string) ([]Thing, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return []Thing{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return []Thing{}, ErrUnauthorized
-		default:
-			return []Thing{}, ErrFailedCreation
-		}
+		return []Thing{}, errors.Wrap(ErrFailedCreation, errors.New(resp.Status))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -85,12 +73,12 @@ func (sdk mfSDK) CreateThings(things []Thing, token string) ([]Thing, error) {
 		return []Thing{}, err
 	}
 
-	var p createThingsRes
-	if err := json.Unmarshal(body, &p); err != nil {
+	var ctr createThingsRes
+	if err := json.Unmarshal(body, &ctr); err != nil {
 		return []Thing{}, err
 	}
 
-	return p.Things, nil
+	return ctr.Things, nil
 }
 
 func (sdk mfSDK) Things(token string, offset, limit uint64, name string) (ThingsPage, error) {
@@ -114,27 +102,15 @@ func (sdk mfSDK) Things(token string, offset, limit uint64, name string) (Things
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ThingsPage{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return ThingsPage{}, ErrUnauthorized
-		default:
-			return ThingsPage{}, ErrFetchFailed
-		}
+		return ThingsPage{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
 	}
 
-	var p thingsPageRes
-	if err := json.Unmarshal(body, &p); err != nil {
+	var tp ThingsPage
+	if err := json.Unmarshal(body, &tp); err != nil {
 		return ThingsPage{}, err
 	}
 
-	return ThingsPage{
-		Things: p.Things,
-		Total:  p.Total,
-		Offset: p.Offset,
-		Limit:  p.Limit,
-	}, nil
+	return tp, nil
 }
 
 func (sdk mfSDK) ThingsByChannel(token, chanID string, offset, limit uint64) (ThingsPage, error) {
@@ -158,27 +134,15 @@ func (sdk mfSDK) ThingsByChannel(token, chanID string, offset, limit uint64) (Th
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ThingsPage{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return ThingsPage{}, ErrUnauthorized
-		default:
-			return ThingsPage{}, ErrFetchFailed
-		}
+		return ThingsPage{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
 	}
 
-	var p thingsPageRes
-	if err := json.Unmarshal(body, &p); err != nil {
+	var tp ThingsPage
+	if err := json.Unmarshal(body, &tp); err != nil {
 		return ThingsPage{}, err
 	}
 
-	return ThingsPage{
-		Things: p.Things,
-		Total:  p.Total,
-		Offset: p.Offset,
-		Limit:  p.Limit,
-	}, nil
+	return tp, nil
 }
 
 func (sdk mfSDK) Thing(id, token string) (Thing, error) {
@@ -202,14 +166,7 @@ func (sdk mfSDK) Thing(id, token string) (Thing, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return Thing{}, ErrUnauthorized
-		case http.StatusNotFound:
-			return Thing{}, ErrNotFound
-		default:
-			return Thing{}, ErrFetchFailed
-		}
+		return Thing{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
 	}
 
 	var t Thing
@@ -220,13 +177,13 @@ func (sdk mfSDK) Thing(id, token string) (Thing, error) {
 	return t, nil
 }
 
-func (sdk mfSDK) UpdateThing(thing Thing, token string) error {
-	data, err := json.Marshal(thing)
+func (sdk mfSDK) UpdateThing(t Thing, token string) error {
+	data, err := json.Marshal(t)
 	if err != nil {
-		return ErrInvalidArgs
+		return err
 	}
 
-	endpoint := fmt.Sprintf("%s/%s", thingsEndpoint, thing.ID)
+	endpoint := fmt.Sprintf("%s/%s", thingsEndpoint, t.ID)
 	url := createURL(sdk.baseURL, sdk.thingsPrefix, endpoint)
 
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
@@ -240,16 +197,7 @@ func (sdk mfSDK) UpdateThing(thing Thing, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ErrInvalidArgs
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		case http.StatusNotFound:
-			return ErrNotFound
-		default:
-			return ErrFailedUpdate
-		}
+		return errors.Wrap(ErrFailedUpdate, errors.New(resp.Status))
 	}
 
 	return nil
@@ -270,42 +218,7 @@ func (sdk mfSDK) DeleteThing(id, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusNoContent {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		case http.StatusBadRequest:
-			return ErrInvalidArgs
-		default:
-			return ErrFailedRemoval
-		}
-	}
-
-	return nil
-}
-
-func (sdk mfSDK) ConnectThing(thingID, chanID, token string) error {
-	endpoint := fmt.Sprintf("%s/%s/%s/%s", channelsEndpoint, chanID, thingsEndpoint, thingID)
-	url := createURL(sdk.baseURL, sdk.thingsPrefix, endpoint)
-
-	req, err := http.NewRequest(http.MethodPut, url, nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := sdk.sendRequest(req, token, string(CTJSON))
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		case http.StatusNotFound:
-			return ErrNotFound
-		default:
-			return ErrFailedConnection
-		}
+		return errors.Wrap(ErrFailedRemoval, errors.New(resp.Status))
 	}
 
 	return nil
@@ -314,7 +227,7 @@ func (sdk mfSDK) ConnectThing(thingID, chanID, token string) error {
 func (sdk mfSDK) Connect(connIDs ConnectionIDs, token string) error {
 	data, err := json.Marshal(connIDs)
 	if err != nil {
-		return ErrInvalidArgs
+		return err
 	}
 
 	url := createURL(sdk.baseURL, sdk.thingsPrefix, connectEndpoint)
@@ -329,14 +242,7 @@ func (sdk mfSDK) Connect(connIDs ConnectionIDs, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		case http.StatusNotFound:
-			return ErrNotFound
-		default:
-			return ErrFailedConnection
-		}
+		return errors.Wrap(ErrFailedConnect, errors.New(resp.Status))
 	}
 
 	return nil
@@ -357,14 +263,7 @@ func (sdk mfSDK) DisconnectThing(thingID, chanID, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusNoContent {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		case http.StatusNotFound:
-			return ErrNotFound
-		default:
-			return ErrFailedDisconnect
-		}
+		return errors.Wrap(ErrFailedDisconnect, errors.New(resp.Status))
 	}
 
 	return nil

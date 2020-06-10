@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 	"strings"
-//	"fmt"
 
+	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/transformers/senml"
 	"github.com/mainflux/mainflux/writers"
 	log "github.com/mainflux/mainflux/logger"
@@ -17,6 +17,8 @@ import (
 )
 
 const pointName = "chan_"
+
+var errSaveMessage = errors.New("failed to save message to influxdb database")
 
 var _ writers.MessageRepository = (*influxRepo)(nil)
 
@@ -43,7 +45,7 @@ func New(client influxdata.Client, database string, logger log.Logger) writers.M
 func (repo *influxRepo) Save(messages ...senml.Message) error {
 	pts, err := influxdata.NewBatchPoints(repo.cfg)
 	if err != nil {
-		return err
+		return errors.Wrap(errSaveMessage, err)
 	}
 
 	var nowTime = time.Now()
@@ -59,16 +61,16 @@ func (repo *influxRepo) Save(messages ...senml.Message) error {
 
 		var customPointName = strings.Replace(pointName+msg.Channel, "-", "_", -1)
 
-		//repo.logger.Warn(fmt.Sprintf("Selecting point name: %s, from channel: %s, @%s, ", customPointName, msg.Channel, t.String()))
-
 		pt, err := influxdata.NewPoint(customPointName, tgs, flds, t)
 		if err != nil {
-			return err
+			return errors.Wrap(errSaveMessage, err)
 		}
 		pts.AddPoint(pt)
 	}
-
-	return repo.client.Write(pts)
+	if err := repo.client.Write(pts); err != nil {
+		return errors.Wrap(errSaveMessage, err)
+	}
+	return nil
 }
 
 func (repo *influxRepo) tagsOf(msg *senml.Message) tags {

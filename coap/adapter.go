@@ -7,13 +7,13 @@
 package coap
 
 import (
-	"context"
-	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/mainflux/mainflux"
-	broker "github.com/nats-io/go-nats"
+	"github.com/mainflux/mainflux/logger"
+	"github.com/mainflux/mainflux/messaging"
 )
 
 const (
@@ -28,48 +28,35 @@ const (
 	MaxRetransmit = 4
 )
 
-var (
-	errBadOption = errors.New("bad option")
-	// ErrFailedMessagePublish indicates that message publishing failed.
-	ErrFailedMessagePublish = errors.New("failed to publish message")
-
-	// ErrFailedSubscription indicates that client couldn't subscribe to specified channel.
-	ErrFailedSubscription = errors.New("failed to subscribe to a channel")
-
-	// ErrFailedConnection indicates that service couldn't connect to message broker.
-	ErrFailedConnection = errors.New("failed to connect to message broker")
-)
-
-// Broker represents NATS broker instance.
-type Broker interface {
-	mainflux.MessagePublisher
+// Service specifies coap service API.
+type Service interface {
+	// Publish Messssage
+	Publish(msg messaging.Message) error
 
 	// Subscribes to channel with specified id, subtopic and adds subscription to
 	// service map of subscriptions under given ID.
-	Subscribe(string, string, string, *Observer) error
-}
+	Subscribe(chanID, subtopic, obsID string, obs *Observer) error
 
-// Service specifies coap service API.
-type Service interface {
-	Broker
 	// Unsubscribe method is used to stop observing resource.
-	Unsubscribe(string)
+	Unsubscribe(obsID string)
 }
 
 var _ Service = (*adapterService)(nil)
 
 type adapterService struct {
 	auth    mainflux.ThingsServiceClient
-	pubsub  Broker
+	ps      messaging.PubSub
+	log     logger.Logger
 	obs     map[string]*Observer
 	obsLock sync.Mutex
 }
 
 // New instantiates the CoAP adapter implementation.
-func New(pubsub Broker, auth mainflux.ThingsServiceClient, responses <-chan string) Service {
+func New(ps messaging.PubSub, log logger.Logger, auth mainflux.ThingsServiceClient, responses <-chan string) Service {
 	as := &adapterService{
 		auth:    auth,
-		pubsub:  pubsub,
+		ps:      ps,
+		log:     log,
 		obs:     make(map[string]*Observer),
 		obsLock: sync.Mutex{},
 	}
@@ -121,23 +108,30 @@ func (svc *adapterService) listenResponses(responses <-chan string) {
 	}
 }
 
-func (svc *adapterService) Publish(ctx context.Context, token string, msg mainflux.Message) error {
-	if err := svc.pubsub.Publish(ctx, token, msg); err != nil {
-		switch err {
-		case broker.ErrConnectionClosed, broker.ErrInvalidConnection:
-			return ErrFailedConnection
-		default:
-			return ErrFailedMessagePublish
-		}
-	}
-
-	return nil
+func (svc *adapterService) Publish(msg messaging.Message) error {
+	return svc.ps.Publish(msg.Channel, msg)
 }
 
 func (svc *adapterService) Subscribe(chanID, subtopic, obsID string, o *Observer) error {
-	if err := svc.pubsub.Subscribe(chanID, subtopic, obsID, o); err != nil {
-		return ErrFailedSubscription
+	subject := chanID
+	if subtopic != "" {
+		subject = fmt.Sprintf("%s.%s", chanID, subtopic)
 	}
+
+	err := svc.ps.Subscribe(subject, func(msg messaging.Message) error {
+		o.Messages <- msg
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		<-o.Cancel
+		if err := svc.ps.Unsubscribe(subject); err != nil {
+			svc.log.Error(fmt.Sprintf("Failed to unsubscribe from %s.%s due to %s", chanID, subtopic, err))
+		}
+	}()
 
 	// Put method removes Observer if already exists.
 	svc.put(obsID, o)

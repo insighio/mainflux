@@ -40,6 +40,9 @@ type Key struct {
 
 // Expired verifies if the key is expired.
 func (k Key) Expired() bool {
+	if k.Type == APIKey && k.ExpiresAt.IsZero() {
+		return false
+	}
 	return k.ExpiresAt.UTC().Before(time.Now().UTC())
 }
 

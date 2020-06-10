@@ -8,7 +8,6 @@ package tracing
 import (
 	"context"
 
-	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/users"
 	opentracing "github.com/opentracing/opentracing-go"
 )
@@ -38,7 +37,7 @@ func UserRepositoryMiddleware(repo users.UserRepository, tracer opentracing.Trac
 	}
 }
 
-func (urm userRepositoryMiddleware) Save(ctx context.Context, user users.User) errors.Error {
+func (urm userRepositoryMiddleware) Save(ctx context.Context, user users.User) error {
 	span := createSpan(ctx, urm.tracer, saveOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -46,7 +45,7 @@ func (urm userRepositoryMiddleware) Save(ctx context.Context, user users.User) e
 	return urm.repo.Save(ctx, user)
 }
 
-func (urm userRepositoryMiddleware) UpdateUser(ctx context.Context, user users.User) errors.Error {
+func (urm userRepositoryMiddleware) UpdateUser(ctx context.Context, user users.User) error {
 	span := createSpan(ctx, urm.tracer, saveOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -54,7 +53,7 @@ func (urm userRepositoryMiddleware) UpdateUser(ctx context.Context, user users.U
 	return urm.repo.UpdateUser(ctx, user)
 }
 
-func (urm userRepositoryMiddleware) RetrieveByID(ctx context.Context, id string) (users.User, errors.Error) {
+func (urm userRepositoryMiddleware) RetrieveByID(ctx context.Context, id string) (users.User, error) {
 	span := createSpan(ctx, urm.tracer, retrieveByIDOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -62,7 +61,7 @@ func (urm userRepositoryMiddleware) RetrieveByID(ctx context.Context, id string)
 	return urm.repo.RetrieveByID(ctx, id)
 }
 
-func (urm userRepositoryMiddleware) UpdatePassword(ctx context.Context, email, password string) errors.Error {
+func (urm userRepositoryMiddleware) UpdatePassword(ctx context.Context, email, password string) error {
 	span := createSpan(ctx, urm.tracer, updatePassword)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -70,7 +69,7 @@ func (urm userRepositoryMiddleware) UpdatePassword(ctx context.Context, email, p
 	return urm.repo.UpdatePassword(ctx, email, password)
 }
 
-func (urm userRepositoryMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) errors.Error {
+func (urm userRepositoryMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) error {
 	span := createSpan(ctx, urm.tracer, verifyEmail)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)

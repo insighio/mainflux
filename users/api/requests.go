@@ -4,9 +4,10 @@
 package api
 
 import (
-	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/users"
 )
+
+const minPassLen = 8
 
 type apiReq interface {
 	validate() error
@@ -16,7 +17,7 @@ type userReq struct {
 	user users.User
 }
 
-func (req userReq) validate() errors.Error {
+func (req userReq) validate() error {
 	return req.user.Validate()
 }
 
@@ -24,7 +25,7 @@ type viewUserInfoReq struct {
 	token string
 }
 
-func (req viewUserInfoReq) validate() errors.Error {
+func (req viewUserInfoReq) validate() error {
 	if req.token == "" {
 		return users.ErrUnauthorizedAccess
 	}
@@ -36,7 +37,7 @@ type updateUserReq struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-func (req updateUserReq) validate() errors.Error {
+func (req updateUserReq) validate() error {
 	if req.token == "" {
 		return users.ErrUnauthorizedAccess
 	}
@@ -48,7 +49,7 @@ type passwResetReq struct {
 	Host  string `json:"host"`
 }
 
-func (req passwResetReq) validate() errors.Error {
+func (req passwResetReq) validate() error {
 	if req.Email == "" || req.Host == "" {
 		return users.ErrMalformedEntity
 	}
@@ -60,7 +61,7 @@ type emailVerificationReq struct {
 	Host  string `json:"host"`
 }
 
-func (req emailVerificationReq) validate() errors.Error {
+func (req emailVerificationReq) validate() error {
 	if req.Email == "" || req.Host == "" {
 		return users.ErrMalformedEntity
 	}
@@ -73,7 +74,7 @@ type resetTokenReq struct {
 	ConfPass string `json:"confirm_password"`
 }
 
-func (req resetTokenReq) validate() errors.Error {
+func (req resetTokenReq) validate() error {
 	if req.Password == "" || req.ConfPass == "" {
 		return users.ErrMalformedEntity
 	}
@@ -90,7 +91,7 @@ type emailVerificationTokenReq struct {
 	Token    string `json:"token"`
 }
 
-func (req emailVerificationTokenReq) validate() errors.Error {
+func (req emailVerificationTokenReq) validate() error {
 	if req.Token == "" {
 		return users.ErrMissingVerificationToken
 	}
@@ -103,11 +104,11 @@ type passwChangeReq struct {
 	OldPassword string `json:"old_password"`
 }
 
-func (req passwChangeReq) validate() errors.Error {
+func (req passwChangeReq) validate() error {
 	if req.Token == "" {
 		return users.ErrUnauthorizedAccess
 	}
-	if req.Password == "" {
+	if len(req.Password) < minPassLen {
 		return users.ErrMalformedEntity
 	}
 	if req.OldPassword == "" {

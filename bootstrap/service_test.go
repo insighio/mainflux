@@ -20,6 +20,7 @@ import (
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/bootstrap"
 	"github.com/mainflux/mainflux/bootstrap/mocks"
+	"github.com/mainflux/mainflux/errors"
 	mfsdk "github.com/mainflux/mainflux/sdk/go"
 	"github.com/mainflux/mainflux/things"
 	httpapi "github.com/mainflux/mainflux/things/api/things/http"
@@ -115,38 +116,38 @@ func TestAdd(t *testing.T) {
 	cases := []struct {
 		desc   string
 		config bootstrap.Config
-		key    string
+		token  string
 		err    error
 	}{
 		{
 			desc:   "add a new config",
 			config: config,
-			key:    validToken,
+			token:  validToken,
 			err:    nil,
 		},
 		{
 			desc:   "add a config with an invalid ID",
 			config: neID,
-			key:    validToken,
+			token:  validToken,
 			err:    bootstrap.ErrNotFound,
 		},
 		{
 			desc:   "add a config with wrong credentials",
 			config: config,
-			key:    invalidToken,
+			token:  invalidToken,
 			err:    bootstrap.ErrUnauthorizedAccess,
 		},
 		{
 			desc:   "add a config with invalid list of channels",
 			config: wrongChannels,
-			key:    validToken,
+			token:  validToken,
 			err:    bootstrap.ErrMalformedEntity,
 		},
 	}
 
 	for _, tc := range cases {
-		_, err := svc.Add(tc.key, tc.config)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		_, err := svc.Add(tc.token, tc.config)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -160,34 +161,34 @@ func TestView(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("Saving config expected to succeed: %s.\n", err))
 
 	cases := []struct {
-		desc string
-		id   string
-		key  string
-		err  error
+		desc  string
+		id    string
+		token string
+		err   error
 	}{
 		{
-			desc: "view an existing config",
-			id:   saved.MFThing,
-			key:  validToken,
-			err:  nil,
+			desc:  "view an existing config",
+			id:    saved.MFThing,
+			token: validToken,
+			err:   nil,
 		},
 		{
-			desc: "view a non-existing config",
-			id:   unknown,
-			key:  validToken,
-			err:  bootstrap.ErrNotFound,
+			desc:  "view a non-existing config",
+			id:    unknown,
+			token: validToken,
+			err:   bootstrap.ErrNotFound,
 		},
 		{
-			desc: "view a config with wrong credentials",
-			id:   config.MFThing,
-			key:  invalidToken,
-			err:  bootstrap.ErrUnauthorizedAccess,
+			desc:  "view a config with wrong credentials",
+			id:    config.MFThing,
+			token: invalidToken,
+			err:   bootstrap.ErrUnauthorizedAccess,
 		},
 	}
 
 	for _, tc := range cases {
-		_, err := svc.View(tc.key, tc.id)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		_, err := svc.View(tc.token, tc.id)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -214,32 +215,32 @@ func TestUpdate(t *testing.T) {
 	cases := []struct {
 		desc   string
 		config bootstrap.Config
-		key    string
+		token  string
 		err    error
 	}{
 		{
 			desc:   "update a config with state Created",
 			config: modifiedCreated,
-			key:    validToken,
+			token:  validToken,
 			err:    nil,
 		},
 		{
 			desc:   "update a non-existing config",
 			config: nonExisting,
-			key:    validToken,
+			token:  validToken,
 			err:    bootstrap.ErrNotFound,
 		},
 		{
 			desc:   "update a config with wrong credentials",
 			config: saved,
-			key:    invalidToken,
+			token:  invalidToken,
 			err:    bootstrap.ErrUnauthorizedAccess,
 		},
 	}
 
 	for _, tc := range cases {
-		err := svc.Update(tc.key, tc.config)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		err := svc.Update(tc.token, tc.config)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -258,7 +259,7 @@ func TestUpdateCert(t *testing.T) {
 
 	cases := []struct {
 		desc       string
-		key        string
+		token      string
 		thingKey   string
 		clientCert string
 		clientKey  string
@@ -271,7 +272,7 @@ func TestUpdateCert(t *testing.T) {
 			clientCert: "newCert",
 			clientKey:  "newKey",
 			caCert:     "newCert",
-			key:        validToken,
+			token:      validToken,
 			err:        nil,
 		},
 		{
@@ -281,8 +282,8 @@ func TestUpdateCert(t *testing.T) {
 			clientKey:  "newKey",
 			caCert:     "newCert",
 
-			key: validToken,
-			err: bootstrap.ErrNotFound,
+			token: validToken,
+			err:   bootstrap.ErrNotFound,
 		},
 		{
 			desc:       "update config cert with wrong credentials",
@@ -290,14 +291,14 @@ func TestUpdateCert(t *testing.T) {
 			clientCert: "newCert",
 			clientKey:  "newKey",
 			caCert:     "newCert",
-			key:        invalidToken,
+			token:      invalidToken,
 			err:        bootstrap.ErrUnauthorizedAccess,
 		},
 	}
 
 	for _, tc := range cases {
-		err := svc.UpdateCert(tc.key, tc.thingKey, tc.clientCert, tc.clientKey, tc.caCert)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		err := svc.UpdateCert(tc.token, tc.thingKey, tc.clientCert, tc.clientKey, tc.caCert)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -327,42 +328,42 @@ func TestUpdateConnections(t *testing.T) {
 
 	cases := []struct {
 		desc        string
-		key         string
+		token       string
 		id          string
 		connections []string
 		err         error
 	}{
 		{
 			desc:        "update connections for config with state Inactive",
-			key:         validToken,
+			token:       validToken,
 			id:          created.MFThing,
 			connections: []string{"2"},
 			err:         nil,
 		},
 		{
 			desc:        "update connections for config with state Active",
-			key:         validToken,
+			token:       validToken,
 			id:          active.MFThing,
 			connections: []string{"3"},
 			err:         nil,
 		},
 		{
 			desc:        "update connections for non-existing config",
-			key:         validToken,
+			token:       validToken,
 			id:          "",
 			connections: []string{"3"},
 			err:         bootstrap.ErrNotFound,
 		},
 		{
 			desc:        "update connections with invalid channels",
-			key:         validToken,
+			token:       validToken,
 			id:          created.MFThing,
 			connections: []string{"wrong"},
 			err:         bootstrap.ErrMalformedEntity,
 		},
 		{
 			desc:        "update connections a config with wrong credentials",
-			key:         invalidToken,
+			token:       invalidToken,
 			id:          created.MFKey,
 			connections: []string{"2", "3"},
 			err:         bootstrap.ErrUnauthorizedAccess,
@@ -370,8 +371,8 @@ func TestUpdateConnections(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		err := svc.UpdateConnections(tc.key, tc.id, tc.connections)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		err := svc.UpdateConnections(tc.token, tc.id, tc.connections)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -410,7 +411,7 @@ func TestList(t *testing.T) {
 		filter bootstrap.Filter
 		offset uint64
 		limit  uint64
-		key    string
+		token  string
 		err    error
 	}{
 		{
@@ -422,7 +423,7 @@ func TestList(t *testing.T) {
 				Configs: saved[0:10],
 			},
 			filter: bootstrap.Filter{},
-			key:    validToken,
+			token:  validToken,
 			offset: 0,
 			limit:  10,
 			err:    nil,
@@ -436,7 +437,7 @@ func TestList(t *testing.T) {
 				Configs: saved[95:96],
 			},
 			filter: bootstrap.Filter{PartialMatch: map[string]string{"name": "95"}},
-			key:    validToken,
+			token:  validToken,
 			offset: 0,
 			limit:  100,
 			err:    nil,
@@ -445,7 +446,7 @@ func TestList(t *testing.T) {
 			desc:   "list configs unauthorized",
 			config: bootstrap.ConfigsPage{},
 			filter: bootstrap.Filter{},
-			key:    invalidToken,
+			token:  invalidToken,
 			offset: 0,
 			limit:  10,
 			err:    bootstrap.ErrUnauthorizedAccess,
@@ -459,7 +460,7 @@ func TestList(t *testing.T) {
 				Configs: saved[95:],
 			},
 			filter: bootstrap.Filter{},
-			key:    validToken,
+			token:  validToken,
 			offset: 95,
 			limit:  10,
 			err:    nil,
@@ -473,7 +474,7 @@ func TestList(t *testing.T) {
 				Configs: []bootstrap.Config{saved[41]},
 			},
 			filter: bootstrap.Filter{FullMatch: map[string]string{"state": bootstrap.Active.String()}},
-			key:    validToken,
+			token:  validToken,
 			offset: 35,
 			limit:  20,
 			err:    nil,
@@ -487,7 +488,7 @@ func TestList(t *testing.T) {
 				Configs: []bootstrap.Config{unknownConfig},
 			},
 			filter: bootstrap.Filter{Unknown: true},
-			key:    validToken,
+			token:  validToken,
 			offset: 0,
 			limit:  20,
 			err:    nil,
@@ -495,10 +496,10 @@ func TestList(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		result, err := svc.List(tc.key, tc.filter, tc.offset, tc.limit)
+		result, err := svc.List(tc.token, tc.filter, tc.offset, tc.limit)
 		assert.ElementsMatch(t, tc.config.Configs, result.Configs, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.config.Configs, result.Configs))
 		assert.Equal(t, tc.config.Total, result.Total, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.config.Total, result.Total))
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -512,40 +513,40 @@ func TestRemove(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("Saving config expected to succeed: %s.\n", err))
 
 	cases := []struct {
-		desc string
-		id   string
-		key  string
-		err  error
+		desc  string
+		id    string
+		token string
+		err   error
 	}{
 		{
-			desc: "view a config with wrong credentials",
-			id:   saved.MFThing,
-			key:  invalidToken,
-			err:  bootstrap.ErrUnauthorizedAccess,
+			desc:  "view a config with wrong credentials",
+			id:    saved.MFThing,
+			token: invalidToken,
+			err:   bootstrap.ErrUnauthorizedAccess,
 		},
 		{
-			desc: "remove an existing config",
-			id:   saved.MFThing,
-			key:  validToken,
-			err:  nil,
+			desc:  "remove an existing config",
+			id:    saved.MFThing,
+			token: validToken,
+			err:   nil,
 		},
 		{
-			desc: "remove removed config",
-			id:   saved.MFThing,
-			key:  validToken,
-			err:  nil,
+			desc:  "remove removed config",
+			id:    saved.MFThing,
+			token: validToken,
+			err:   nil,
 		},
 		{
-			desc: "remove non-existing config",
-			id:   unknown,
-			key:  validToken,
-			err:  nil,
+			desc:  "remove non-existing config",
+			id:    unknown,
+			token: validToken,
+			err:   nil,
 		},
 	}
 
 	for _, tc := range cases {
-		err := svc.Remove(tc.key, tc.id)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		err := svc.Remove(tc.token, tc.id)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -606,7 +607,7 @@ func TestBootstrap(t *testing.T) {
 	for _, tc := range cases {
 		config, err := svc.Bootstrap(tc.externalKey, tc.externalID, tc.encrypted)
 		assert.Equal(t, tc.config, config, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.config, config))
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -623,49 +624,49 @@ func TestChangeState(t *testing.T) {
 		desc  string
 		state bootstrap.State
 		id    string
-		key   string
+		token string
 		err   error
 	}{
 		{
 			desc:  "change state with wrong credentials",
 			state: bootstrap.Active,
 			id:    saved.MFThing,
-			key:   invalidToken,
+			token: invalidToken,
 			err:   bootstrap.ErrUnauthorizedAccess,
 		},
 		{
 			desc:  "change state of non-existing config",
 			state: bootstrap.Active,
 			id:    unknown,
-			key:   validToken,
+			token: validToken,
 			err:   bootstrap.ErrNotFound,
 		},
 		{
 			desc:  "change state to Active",
 			state: bootstrap.Active,
 			id:    saved.MFThing,
-			key:   validToken,
+			token: validToken,
 			err:   nil,
 		},
 		{
 			desc:  "change state to current state",
 			state: bootstrap.Active,
 			id:    saved.MFThing,
-			key:   validToken,
+			token: validToken,
 			err:   nil,
 		},
 		{
 			desc:  "change state to Inactive",
 			state: bootstrap.Inactive,
 			id:    saved.MFThing,
-			key:   validToken,
+			token: validToken,
 			err:   nil,
 		},
 	}
 
 	for _, tc := range cases {
-		err := svc.ChangeState(tc.key, tc.id, tc.state)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		err := svc.ChangeState(tc.token, tc.id, tc.state)
+		assert.True(t, errors.Contains(err, tc.err), err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -702,7 +703,7 @@ func TestUpdateChannelHandler(t *testing.T) {
 
 	for _, tc := range cases {
 		err := svc.UpdateChannelHandler(tc.channel)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -734,7 +735,7 @@ func TestRemoveChannelHandler(t *testing.T) {
 
 	for _, tc := range cases {
 		err := svc.RemoveChannelHandler(tc.id)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -766,7 +767,7 @@ func TestRemoveCoinfigHandler(t *testing.T) {
 
 	for _, tc := range cases {
 		err := svc.RemoveConfigHandler(tc.id)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -801,6 +802,6 @@ func TestDisconnectThingsHandler(t *testing.T) {
 
 	for _, tc := range cases {
 		err := svc.DisconnectThingHandler(tc.channelID, tc.thingID)
-		assert.Equal(t, tc.err, err, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }

@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/mainflux/mainflux/errors"
 )
 
-func (sdk mfSDK) CreateUser(user User) error {
-	data, err := json.Marshal(user)
+func (sdk mfSDK) CreateUser(u User) error {
+	data, err := json.Marshal(u)
 	if err != nil {
-		return ErrInvalidArgs
+		return err
 	}
 
 	url := createURL(sdk.baseURL, sdk.usersPrefix, "users")
@@ -24,23 +26,47 @@ func (sdk mfSDK) CreateUser(user User) error {
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ErrInvalidArgs
-		case http.StatusConflict:
-			return ErrConflict
-		default:
-			return ErrFailedCreation
-		}
+		return errors.Wrap(ErrFailedCreation, errors.New(resp.Status))
 	}
 
 	return nil
 }
 
+func (sdk mfSDK) User(token string) (User, error) {
+	url := createURL(sdk.baseURL, sdk.usersPrefix, "users")
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return User{}, err
+	}
+
+	resp, err := sdk.sendRequest(req, token, string(CTJSON))
+	if err != nil {
+		return User{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return User{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return User{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
+	}
+
+	var u User
+	if err := json.Unmarshal(body, &u); err != nil {
+		return User{}, err
+	}
+
+	return u, nil
+}
+
 func (sdk mfSDK) CreateToken(user User) (string, error) {
 	data, err := json.Marshal(user)
 	if err != nil {
-		return "", ErrInvalidArgs
+		return "", err
 	}
 
 	url := createURL(sdk.baseURL, sdk.usersPrefix, "tokens")
@@ -57,20 +83,67 @@ func (sdk mfSDK) CreateToken(user User) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return "", ErrInvalidArgs
-		case http.StatusForbidden:
-			return "", ErrUnauthorized
-		default:
-			return "", ErrFailedCreation
-		}
+		return "", errors.Wrap(ErrFailedCreation, errors.New(resp.Status))
 	}
 
-	var t tokenRes
-	if err := json.Unmarshal(body, &t); err != nil {
+	var tr tokenRes
+	if err := json.Unmarshal(body, &tr); err != nil {
 		return "", err
 	}
 
-	return t.Token, nil
+	return tr.Token, nil
+}
+
+func (sdk mfSDK) UpdateUser(u User, token string) error {
+	data, err := json.Marshal(u)
+	if err != nil {
+		return err
+	}
+
+	url := createURL(sdk.baseURL, sdk.usersPrefix, "users")
+
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	resp, err := sdk.sendRequest(req, token, string(CTJSON))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(ErrFailedUpdate, errors.New(resp.Status))
+	}
+
+	return nil
+}
+
+func (sdk mfSDK) UpdatePassword(oldPass, newPass, token string) error {
+	ur := UserPasswordReq{
+		OldPassword: oldPass,
+		Password:    newPass,
+	}
+	data, err := json.Marshal(ur)
+	if err != nil {
+		return err
+	}
+
+	url := createURL(sdk.baseURL, sdk.usersPrefix, "password")
+
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	resp, err := sdk.sendRequest(req, token, string(CTJSON))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return errors.Wrap(ErrFailedUpdate, errors.New(resp.Status))
+	}
+
+	return nil
 }

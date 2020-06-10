@@ -5,15 +5,16 @@ package authn
 
 import (
 	"context"
-	"errors"
 	"time"
+
+	"github.com/mainflux/mainflux/errors"
 )
 
 const (
-	loginDuration             = 10 * time.Hour
-	resetDuration             = 5 * time.Minute
+	loginDuration    		  = 10 * time.Hour
+	recoveryDuration 		  = 5 * time.Minute
 	emailVerificationDuration = 48 * time.Hour
-	issuerName                = "mainflux.authn"
+	issuerName       		  = "mainflux.authn"
 )
 
 var (
@@ -29,6 +30,12 @@ var (
 
 	// ErrConflict indicates that entity already exists.
 	ErrConflict = errors.New("entity already exists")
+
+	errIssueUser = errors.New("failed to issue new user key")
+	errIssueTmp  = errors.New("failed to issue new temporary key")
+	errRevoke    = errors.New("failed to remove key")
+	errRetrieve  = errors.New("failed to retrieve key data")
+	errIdentify  = errors.New("failed to validate token")
 )
 
 // Service specifies an API that must be fullfiled by the domain service
@@ -76,27 +83,29 @@ func (svc service) Issue(ctx context.Context, issuer string, key Key) (Key, erro
 	case APIKey:
 		return svc.userKey(ctx, issuer, key)
 	case RecoveryKey:
-		return svc.resetKey(ctx, issuer, key)
+		return svc.tmpKey(issuer, recoveryDuration, key)
 	case EmailVerificationKey:
-		return svc.verifyEmailKey(ctx, issuer, key)
+		return svc.tmpKey(issuer, emailVerificationDuration, key)
 	default:
-		return svc.loginKey(issuer, key)
+		return svc.tmpKey(issuer, loginDuration, key)
 	}
 }
 
 func (svc service) Revoke(ctx context.Context, issuer, id string) error {
 	email, err := svc.login(issuer)
 	if err != nil {
-		return err
+		return errors.Wrap(errRevoke, err)
 	}
-
-	return svc.keys.Remove(ctx, email, id)
+	if err := svc.keys.Remove(ctx, email, id); err != nil {
+		return errors.Wrap(errRevoke, err)
+	}
+	return nil
 }
 
 func (svc service) Retrieve(ctx context.Context, issuer, id string) (Key, error) {
 	email, err := svc.login(issuer)
 	if err != nil {
-		return Key{}, err
+		return Key{}, errors.Wrap(errRetrieve, err)
 	}
 
 	return svc.keys.Retrieve(ctx, email, id)
@@ -105,7 +114,7 @@ func (svc service) Retrieve(ctx context.Context, issuer, id string) (Key, error)
 func (svc service) Identify(ctx context.Context, token string) (string, error) {
 	c, err := svc.tokenizer.Parse(token)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(errIdentify, err)
 	}
 
 	switch c.Type {
@@ -130,25 +139,13 @@ func (svc service) Identify(ctx context.Context, token string) (string, error) {
 	}
 }
 
-func (svc service) loginKey(issuer string, key Key) (Key, error) {
-	return svc.tmpKey(issuer, loginDuration, key)
-}
-
-func (svc service) resetKey(ctx context.Context, issuer string, key Key) (Key, error) {
-	return svc.tmpKey(issuer, resetDuration, key)
-}
-
-func (svc service) verifyEmailKey(ctx context.Context, issuer string, key Key) (Key, error) {
-	return svc.tmpKey(issuer, emailVerificationDuration, key)
-}
-
 func (svc service) tmpKey(issuer string, duration time.Duration, key Key) (Key, error) {
 	key.Secret = issuer
 	key.Issuer = issuerName
 	key.ExpiresAt = key.IssuedAt.Add(duration)
 	val, err := svc.tokenizer.Issue(key)
 	if err != nil {
-		return Key{}, err
+		return Key{}, errors.Wrap(errIssueTmp, err)
 	}
 
 	key.Secret = val
@@ -158,24 +155,24 @@ func (svc service) tmpKey(issuer string, duration time.Duration, key Key) (Key, 
 func (svc service) userKey(ctx context.Context, issuer string, key Key) (Key, error) {
 	email, err := svc.login(issuer)
 	if err != nil {
-		return Key{}, err
+		return Key{}, errors.Wrap(errIssueUser, err)
 	}
 	key.Issuer = email
 
 	id, err := svc.idp.ID()
 	if err != nil {
-		return Key{}, err
+		return Key{}, errors.Wrap(errIssueUser, err)
 	}
 	key.ID = id
 
 	value, err := svc.tokenizer.Issue(key)
 	if err != nil {
-		return Key{}, err
+		return Key{}, errors.Wrap(errIssueUser, err)
 	}
 	key.Secret = value
 
 	if _, err := svc.keys.Save(ctx, key); err != nil {
-		return Key{}, err
+		return Key{}, errors.Wrap(errIssueUser, err)
 	}
 
 	return key, nil

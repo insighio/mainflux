@@ -10,14 +10,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/mainflux/mainflux/errors"
 )
 
 const channelsEndpoint = "channels"
 
-func (sdk mfSDK) CreateChannel(channel Channel, token string) (string, error) {
-	data, err := json.Marshal(channel)
+func (sdk mfSDK) CreateChannel(c Channel, token string) (string, error) {
+	data, err := json.Marshal(c)
 	if err != nil {
-		return "", ErrInvalidArgs
+		return "", err
 	}
 
 	url := createURL(sdk.baseURL, sdk.thingsPrefix, channelsEndpoint)
@@ -32,24 +34,17 @@ func (sdk mfSDK) CreateChannel(channel Channel, token string) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return "", ErrInvalidArgs
-		case http.StatusForbidden:
-			return "", ErrUnauthorized
-		default:
-			return "", ErrFailedCreation
-		}
+		return "", errors.Wrap(ErrFailedCreation, errors.New(resp.Status))
 	}
 
 	id := strings.TrimPrefix(resp.Header.Get("Location"), fmt.Sprintf("/%s/", channelsEndpoint))
 	return id, nil
 }
 
-func (sdk mfSDK) CreateChannels(channels []Channel, token string) ([]Channel, error) {
-	data, err := json.Marshal(channels)
+func (sdk mfSDK) CreateChannels(chs []Channel, token string) ([]Channel, error) {
+	data, err := json.Marshal(chs)
 	if err != nil {
-		return []Channel{}, ErrInvalidArgs
+		return []Channel{}, err
 	}
 
 	endpoint := fmt.Sprintf("%s/%s", channelsEndpoint, "bulk")
@@ -67,14 +62,7 @@ func (sdk mfSDK) CreateChannels(channels []Channel, token string) ([]Channel, er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return []Channel{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return []Channel{}, ErrUnauthorized
-		default:
-			return []Channel{}, ErrFailedCreation
-		}
+		return []Channel{}, errors.Wrap(ErrFailedCreation, errors.New(resp.Status))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -82,12 +70,12 @@ func (sdk mfSDK) CreateChannels(channels []Channel, token string) ([]Channel, er
 		return []Channel{}, err
 	}
 
-	var p createChannelsRes
-	if err := json.Unmarshal(body, &p); err != nil {
+	var ccr createChannelsRes
+	if err := json.Unmarshal(body, &ccr); err != nil {
 		return []Channel{}, err
 	}
 
-	return p.Channels, nil
+	return ccr.Channels, nil
 }
 
 func (sdk mfSDK) Channels(token string, offset, limit uint64, name string) (ChannelsPage, error) {
@@ -111,27 +99,15 @@ func (sdk mfSDK) Channels(token string, offset, limit uint64, name string) (Chan
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ChannelsPage{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return ChannelsPage{}, ErrUnauthorized
-		default:
-			return ChannelsPage{}, ErrFetchFailed
-		}
+		return ChannelsPage{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
 	}
 
-	var p channelsPageRes
-	if err := json.Unmarshal(body, &p); err != nil {
+	var cp ChannelsPage
+	if err := json.Unmarshal(body, &cp); err != nil {
 		return ChannelsPage{}, err
 	}
 
-	return ChannelsPage{
-		Channels: p.Channels,
-		Total:    p.Total,
-		Offset:   p.Offset,
-		Limit:    p.Limit,
-	}, nil
+	return cp, nil
 }
 
 func (sdk mfSDK) ChannelsByThing(token, thingID string, offset, limit uint64) (ChannelsPage, error) {
@@ -155,27 +131,15 @@ func (sdk mfSDK) ChannelsByThing(token, thingID string, offset, limit uint64) (C
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ChannelsPage{}, ErrInvalidArgs
-		case http.StatusForbidden:
-			return ChannelsPage{}, ErrUnauthorized
-		default:
-			return ChannelsPage{}, ErrFetchFailed
-		}
+		return ChannelsPage{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
 	}
 
-	var p channelsPageRes
-	if err := json.Unmarshal(body, &p); err != nil {
+	var cp ChannelsPage
+	if err := json.Unmarshal(body, &cp); err != nil {
 		return ChannelsPage{}, err
 	}
 
-	return ChannelsPage{
-		Channels: p.Channels,
-		Total:    p.Total,
-		Offset:   p.Offset,
-		Limit:    p.Limit,
-	}, nil
+	return cp, nil
 }
 
 func (sdk mfSDK) Channel(id, token string) (Channel, error) {
@@ -199,14 +163,7 @@ func (sdk mfSDK) Channel(id, token string) (Channel, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return Channel{}, ErrUnauthorized
-		case http.StatusNotFound:
-			return Channel{}, ErrNotFound
-		default:
-			return Channel{}, ErrFetchFailed
-		}
+		return Channel{}, errors.Wrap(ErrFailedFetch, errors.New(resp.Status))
 	}
 
 	var c Channel
@@ -217,13 +174,13 @@ func (sdk mfSDK) Channel(id, token string) (Channel, error) {
 	return c, nil
 }
 
-func (sdk mfSDK) UpdateChannel(channel Channel, token string) error {
-	data, err := json.Marshal(channel)
+func (sdk mfSDK) UpdateChannel(c Channel, token string) error {
+	data, err := json.Marshal(c)
 	if err != nil {
-		return ErrInvalidArgs
+		return err
 	}
 
-	endpoint := fmt.Sprintf("%s/%s", channelsEndpoint, channel.ID)
+	endpoint := fmt.Sprintf("%s/%s", channelsEndpoint, c.ID)
 	url := createURL(sdk.baseURL, sdk.thingsPrefix, endpoint)
 
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
@@ -237,16 +194,7 @@ func (sdk mfSDK) UpdateChannel(channel Channel, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ErrInvalidArgs
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		case http.StatusNotFound:
-			return ErrNotFound
-		default:
-			return ErrFailedUpdate
-		}
+		return errors.Wrap(ErrFailedUpdate, errors.New(resp.Status))
 	}
 
 	return nil
@@ -267,14 +215,7 @@ func (sdk mfSDK) DeleteChannel(id, token string) error {
 	}
 
 	if resp.StatusCode != http.StatusNoContent {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return ErrInvalidArgs
-		case http.StatusForbidden:
-			return ErrUnauthorized
-		default:
-			return ErrFailedUpdate
-		}
+		return errors.Wrap(ErrFailedRemoval, errors.New(resp.Status))
 	}
 
 	return nil

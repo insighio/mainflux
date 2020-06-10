@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/mainflux/mainflux"
 )
 
 const (
@@ -23,10 +21,11 @@ const (
 	CTBinary ContentType = "application/octet-stream"
 )
 
+const minPassLen = 8
+
 var (
-	// ErrConflict indicates that create or update of entity failed because
-	// entity with same name already exists.
-	ErrConflict = errors.New("entity already exists")
+	// ErrUnauthorized indicates that entity creation failed.
+	ErrUnauthorized = errors.New("unauthorized, missing credentials")
 
 	// ErrFailedCreation indicates that entity creation failed.
 	ErrFailedCreation = errors.New("failed to create entity")
@@ -34,36 +33,39 @@ var (
 	// ErrFailedUpdate indicates that entity update failed.
 	ErrFailedUpdate = errors.New("failed to update entity")
 
+	// ErrFailedFetch indicates that fetching of entity data failed.
+	ErrFailedFetch = errors.New("failed to fetch entity")
+
+	// ErrFailedRemoval indicates that entity removal failed.
+	ErrFailedRemoval = errors.New("failed to remove entity")
+
+	// ErrFailedConnect indicates that connecting thing to channel failed.
+	ErrFailedConnect = errors.New("failed to connect thing to channel")
+
+	// ErrFailedDisconnect indicates that disconnecting thing from a channel failed.
+	ErrFailedDisconnect = errors.New("failed to disconnect thing from channel")
+
 	// ErrFailedPublish indicates that publishing message failed.
 	ErrFailedPublish = errors.New("failed to publish message")
 
 	// ErrFailedRead indicates that read messages failed.
 	ErrFailedRead = errors.New("failed to read messages")
 
-	// ErrFailedRemoval indicates that entity removal failed.
-	ErrFailedRemoval = errors.New("failed to remove entity")
-
-	// ErrFailedConnection indicates that connecting thing to channel failed.
-	ErrFailedConnection = errors.New("failed to connect thing to channel")
-
-	// ErrFailedDisconnect indicates that disconnecting thing from a channel failed.
-	ErrFailedDisconnect = errors.New("failed to disconnect thing from channel")
-
-	// ErrInvalidArgs indicates that invalid argument was passed.
-	ErrInvalidArgs = errors.New("invalid argument passed")
-
-	// ErrFetchFailed indicates that fetching of entity data failed.
-	ErrFetchFailed = errors.New("failed to fetch entity")
-
-	// ErrUnauthorized indicates unauthorized access.
-	ErrUnauthorized = errors.New("unauthorized access")
-
-	// ErrNotFound indicates that entity doesn't exist.
-	ErrNotFound = errors.New("entity not found")
-
-	// ErrInvalidContentType indicates that nonexistent message content type
+	// ErrInvalidContentType indicates that non-existent message content type
 	// was passed.
 	ErrInvalidContentType = errors.New("Unknown Content Type")
+
+	// ErrFetchVersion indicates that fetching of version failed.
+	ErrFetchVersion = errors.New("failed to fetch version")
+
+	// ErrFailedWhitelist failed to whitelist configs
+	ErrFailedWhitelist = errors.New("failed to whitelist")
+
+	// ErrCerts indicates error fetching certificates.
+	ErrCerts = errors.New("failed to fetch certs data")
+
+	// ErrCertsRemove indicates failure while cleaning up from the Certs service.
+	ErrCertsRemove = errors.New("failed to remove certificate")
 )
 
 // ContentType represents all possible content types.
@@ -73,8 +75,9 @@ var _ SDK = (*mfSDK)(nil)
 
 // User represents mainflux user its credentials.
 type User struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string                 `json:"email,omitempty"`
+	Password string                 `json:"password,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Thing represents mainflux thing.
@@ -85,41 +88,11 @@ type Thing struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// ThingsPage contains list of things in a page with proper metadata.
-type ThingsPage struct {
-	Things []Thing `json:"things"`
-	Total  uint64  `json:"total"`
-	Offset uint64  `json:"offset"`
-	Limit  uint64  `json:"limit"`
-}
-
 // Channel represents mainflux channel.
 type Channel struct {
 	ID       string                 `json:"id,omitempty"`
-	Name     string                 `json:"name"`
+	Name     string                 `json:"name,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
-}
-
-// ChannelsPage contains list of channels in a page with proper metadata.
-type ChannelsPage struct {
-	Channels []Channel `json:"channels"`
-	Total    uint64    `json:"total"`
-	Offset   uint64    `json:"offset"`
-	Limit    uint64    `json:"limit"`
-}
-
-// MessagesPage contains list of messages in a page with proper metadata.
-type MessagesPage struct {
-	Total    uint64             `json:"total"`
-	Offset   uint64             `json:"offset"`
-	Limit    uint64             `json:"limit"`
-	Messages []mainflux.Message `json:"messages,omitempty"`
-}
-
-// ConnectionIDs contains ID lists of things and channels to be connected
-type ConnectionIDs struct {
-	ChannelIDs []string `json:"channel_ids"`
-	ThingIDs   []string `json:"thing_ids"`
 }
 
 // SDK contains Mainflux API.
@@ -127,8 +100,17 @@ type SDK interface {
 	// CreateUser registers mainflux user.
 	CreateUser(user User) error
 
+	// User returns user object.
+	User(token string) (User, error)
+
 	// CreateToken receives credentials and returns user token.
 	CreateToken(user User) (string, error)
+
+	// UpdateUser updates existing user.
+	UpdateUser(user User, token string) error
+
+	// UpdatePassword updates user password.
+	UpdatePassword(oldPass, newPass, token string) error
 
 	// CreateThing registers new thing and returns its id.
 	CreateThing(thing Thing, token string) (string, error)
@@ -151,9 +133,6 @@ type SDK interface {
 
 	// DeleteThing removes existing thing.
 	DeleteThing(id, token string) error
-
-	// ConnectThing connects thing to specified channel by id.
-	ConnectThing(thingID, chanID, token string) error
 
 	// Connect bulk connects things to channels specified by id.
 	Connect(conns ConnectionIDs, token string) error
@@ -194,16 +173,43 @@ type SDK interface {
 
 	// Version returns used mainflux version.
 	Version() (string, error)
+
+	// AddBootstrap add bootstrap configuration
+	AddBootstrap(token string, cfg BootstrapConfig) (string, error)
+
+	// View returns Thing Config with given ID belonging to the user identified by the given token.
+	ViewBootstrap(token, id string) (BootstrapConfig, error)
+
+	// Update updates editable fields of the provided Config.
+	UpdateBootstrap(token string, cfg BootstrapConfig) error
+
+	// Remove removes Config with specified token that belongs to the user identified by the given token.
+	RemoveBootstrap(token, id string) error
+
+	// Bootstrap returns Config to the Thing with provided external ID using external key.
+	Bootstrap(externalKey, externalID string) (BootstrapConfig, error)
+
+	// Whitelist updates Thing state Config with given ID belonging to the user identified by the given token.
+	Whitelist(token string, cfg BootstrapConfig) error
+
+	// Cert issues a certificate for a thing required for mtls.
+	Cert(thingID, thingKey, token string) (Cert, error)
+
+	// RemoveCert remove a certificate
+	RemoveCert(id, token string) error
 }
 
 type mfSDK struct {
 	baseURL           string
 	readerURL         string
+	bootstrapURL      string
+	certsURL          string
 	readerPrefix      string
 	usersPrefix       string
 	thingsPrefix      string
 	channelsPrefix    string
 	httpAdapterPrefix string
+	bootstrapPrefix   string
 	msgContentType    ContentType
 	client            *http.Client
 }
@@ -212,10 +218,13 @@ type mfSDK struct {
 type Config struct {
 	BaseURL           string
 	ReaderURL         string
+	BootstrapURL      string
+	CertsURL          string
 	ReaderPrefix      string
 	UsersPrefix       string
 	ThingsPrefix      string
 	HTTPAdapterPrefix string
+	BootstrapPrefix   string
 	MsgContentType    ContentType
 	TLSVerification   bool
 }
@@ -225,10 +234,13 @@ func NewSDK(conf Config) SDK {
 	return &mfSDK{
 		baseURL:           conf.BaseURL,
 		readerURL:         conf.ReaderURL,
+		bootstrapURL:      conf.BootstrapURL,
+		certsURL:          conf.CertsURL,
 		readerPrefix:      conf.ReaderPrefix,
 		usersPrefix:       conf.UsersPrefix,
 		thingsPrefix:      conf.ThingsPrefix,
 		httpAdapterPrefix: conf.HTTPAdapterPrefix,
+		bootstrapPrefix:   conf.BootstrapPrefix,
 		msgContentType:    conf.MsgContentType,
 		client: &http.Client{
 			Transport: &http.Transport{

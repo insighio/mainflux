@@ -5,7 +5,6 @@ package emailer
 import (
 	"fmt"
 
-	"github.com/mainflux/mainflux/errors"
 	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/users"
 )
@@ -29,13 +28,13 @@ func New(reset_url, verify_url string, configReset *email.Config, configVerify *
 	return &emailer{resetURL: reset_url, verifyURL: verify_url, agent: e, resetTmpl: configReset.Template, verifyTmpl: configVerify.Template}, nil
 }
 
-func (e *emailer) SendPasswordReset(To []string, host string, token string) errors.Error {
+func (e *emailer) SendPasswordReset(To []string, host string, token string) error {
 	url := fmt.Sprintf("%s%s?token=%s", host, e.resetURL, token)
 	content := fmt.Sprintf("%s", url)
 	return e.agent.Send(To, "", "Password reset", "", content, "", e.resetTmpl)
 }
 
-func (e *emailer) SendEmailVerification(To []string, host string, token string) errors.Error {
+func (e *emailer) SendEmailVerification(To []string, host string, token string) error {
 	url := fmt.Sprintf("%s%s?token=%s", host, e.verifyURL, token) // TO-DO
 	content := fmt.Sprintf("%s", url)
 	return e.agent.Send(To, "", "Email Verification", "", content, "", e.verifyTmpl)

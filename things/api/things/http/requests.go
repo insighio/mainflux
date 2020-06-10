@@ -3,7 +3,9 @@
 
 package http
 
-import "github.com/mainflux/mainflux/things"
+import (
+	"github.com/mainflux/mainflux/things"
+)
 
 const maxLimitSize = 100
 const maxNameSize = 1024
@@ -250,6 +252,10 @@ type createConnectionsReq struct {
 func (req createConnectionsReq) validate() error {
 	if req.token == "" {
 		return things.ErrUnauthorizedAccess
+	}
+
+	if len(req.ChannelIDs) == 0 || len(req.ThingIDs) == 0 {
+		return things.ErrMalformedEntity
 	}
 
 	for _, chID := range req.ChannelIDs {
