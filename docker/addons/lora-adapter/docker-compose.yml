@@ -26,7 +26,7 @@ services:
       - mainflux-lora-redis-volume:/data
 
   lora-adapter:
-    image: mainflux/lora:0.9.1
+    image: mainflux/lora:latest
     container_name: mainflux-lora
     restart: always
     environment:

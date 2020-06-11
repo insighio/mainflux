@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strconv"
 
 	"github.com/mainflux/mainflux"
 )
@@ -72,6 +73,17 @@ func New(pub mainflux.MessagePublisher, thingsRM, channelsRM RouteMapRepository)
 	}
 }
 
+func FloatToString(input_num float64) string {
+    // to convert a float number to a string
+    return strconv.FormatFloat(input_num, 'f', 1, 64)
+}
+
+func IntToString(input_num int64) string {
+    // to convert an int number to a string
+    return strconv.FormatInt(int64(input_num), 10)
+}
+
+
 // Publish forwards messages from Lora MQTT broker to Mainflux NATS broker
 func (as *adapterService) Publish(ctx context.Context, token string, m Message) error {
 	// Get route map of lora application
@@ -100,7 +112,20 @@ func (as *adapterService) Publish(ctx context.Context, token string, m Message) 
 		if err != nil {
 			return err
 		}
-		payload = []byte(jo)
+
+		tmp := string(jo)
+		tmp = tmp[:len(tmp)-1]
+
+		if len(m.RxInfo) > 0 {
+			tmp = tmp + ",{\"n\":\"rssi\",\"u\":\"dBm\",\"v\":" + IntToString(int64(m.RxInfo[0].Rssi)) + "}"
+		    tmp = tmp + ",{\"n\":\"snr\",\"u\":\"dB\",\"v\":" + FloatToString(m.RxInfo[0].LoRaSNR) + "}"
+		}
+
+		tmp = tmp + ",{\"n\":\"dr\",\"v\":" + IntToString(int64(m.TxInfo.Dr)) + "}"
+		tmp = tmp + ",{\"n\":\"freq\",\"v\":" + IntToString(int64(m.TxInfo.Frequency)) + "}"
+		tmp = tmp + "]"
+
+		payload = []byte(tmp)
 	}
 
 	// Publish on Mainflux NATS broker

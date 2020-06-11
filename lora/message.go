@@ -1,15 +1,19 @@
 package lora
 
-// RxInfo receiver parameters
-type RxInfo []struct {
-	Mac       string  `json:"mac"`
-	Name      string  `json:"name"`
+type Location struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	Altitude  float64 `json:"altitude"`
-	Time      string  `json:"time"`
-	Rssi      float64 `json:"rssi"`
-	LoRaSNR   float64 `json:"loRaSNR"`
+}
+
+// RxInfo receiver parameters
+type RxInfo []struct {
+	Mac       string   `json:"mac"`
+	Name      string   `json:"name"`
+	Location  Location `json:"location"`
+	Time      string   `json:"time"`
+	Rssi      float64  `json:"rssi"`
+	LoRaSNR   float64  `json:"loRaSNR"`
 }
 
 // DataRate lora data rate
@@ -25,6 +29,7 @@ type TxInfo struct {
 	DataRate  DataRate `json:"dataRate"`
 	Adr       bool     `json:"adr"`
 	CodeRate  string   `json:"codeRate"`
+	Dr	      float64  `json:"dr"`
 }
 
 // Message lora msg (www.loraserver.io/lora-app-server/integrate/data/)
