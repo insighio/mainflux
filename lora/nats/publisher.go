@@ -31,5 +31,8 @@ func (pub *natsPublisher) Publish(_ context.Context, _ string, msg mainflux.Mess
 	}
 
 	subject := fmt.Sprintf("channel.%s", msg.Channel)
+	if(msg.Subtopic != "") {
+		subject  = subject + "." + msg.Subtopic
+	}
 	return pub.nc.Publish(subject, data)
 }

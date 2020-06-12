@@ -132,9 +132,10 @@ func (as *adapterService) Publish(ctx context.Context, token string, m Message) 
 	msg := mainflux.Message{
 		Publisher:   thing,
 		Protocol:    protocol,
-		ContentType: "Content-Type",
+		//ContentType: "application_json",
 		Channel:     channel,
 		Payload:     payload,
+		Subtopic:    thing,
 	}
 
 	return as.publisher.Publish(ctx, token, msg)
