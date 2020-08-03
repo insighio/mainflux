@@ -61,15 +61,15 @@ services:
     volumes:
       - ./channels.toml:/config/channels.toml
 
-  grafana:
-    image: grafana/grafana:5.1.3
-    container_name: mainflux-grafana
-    depends_on:
-      - influxdb
-    restart: always
-    ports:
-      - ${MF_INFLUX_WRITER_GRAFANA_PORT}:${MF_GRAFANA_PORT}
-    networks:
-      - docker_mainflux-base-net
-    volumes:
-      - mainflux-grafana-volume:/var/lib/grafana
+        #  grafana:
+        #    image: grafana/grafana:5.1.3
+        #    container_name: mainflux-grafana
+        #    depends_on:
+        #      - influxdb
+        #    restart: always
+        #    ports:
+        #      - ${MF_INFLUX_WRITER_GRAFANA_PORT}:${MF_GRAFANA_PORT}
+        #    networks:
+        #      - docker_mainflux-base-net
+        #    volumes:
+        #     - mainflux-grafana-volume:/var/lib/grafana
