@@ -18,6 +18,7 @@ envsubst '
     ${MF_UI_PORT}
     ${INSIGHIO_UI_PORT}
     ${MF_MQTT_ADAPTER_PORT}
-    ${INSIGHIO_RPROXY_PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+    ${INSIGHIO_RPROXY_PORT}
+    ${INSIGHIO_DOCS_PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
     
 exec nginx -g "daemon off;"
