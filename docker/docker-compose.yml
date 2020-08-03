@@ -265,6 +265,17 @@ services:
     networks:
       - mainflux-base-net
 
+  docs:
+    image: insigh-io/docs:latest
+    container_name: insigh-io-docs
+    restart: always
+    ports:
+      - ${INSIGHIO_DOCS_PORT}:${INSIGHIO_DOCS_PORT}
+    networks:
+      - mainflux-base-net
+    environment:
+      INSIGHIO_DOCS_PORT: ${INSIGHIO_DOCS_PORT}
+
   ui:
     image: insigh-io/ui:latest
     container_name: insigh-io-ui
@@ -289,14 +300,3 @@ services:
       INSIGHIO_API_IP: ${INSIGHIO_API_IP}
       INSIGHIO_PROXY_DB_USER: ${INSIGHIO_PROXY_DB_USER}
       INSIGHIO_PROXY_DB_PASS: ${INSIGHIO_PROXY_DB_PASS}
-
-  mainflux-ui:
-    image: mainflux/ui-amd64:latest
-    container_name: mainflux-ui
-    restart: always
-    ports:
-      - ${MF_UI_PORT}:${MF_UI_PORT}
-    networks:
-      - mainflux-base-net
-    environment:
-      MF_UI_PORT: ${MF_UI_PORT}
