@@ -21,6 +21,7 @@ var (
 	_ mainflux.Response = (*deleteRes)(nil)
 	_ mainflux.Response = (*assignUserToGroupRes)(nil)
 	_ mainflux.Response = (*removeUserFromGroupRes)(nil)
+	_ mainflux.Response = (*emailVerificationRes)(nil)
 )
 
 // MailSent message response when link is sent
@@ -264,4 +265,19 @@ func (res removeUserFromGroupRes) Headers() map[string]string {
 
 func (res removeUserFromGroupRes) Empty() bool {
 	return true
+}
+
+type emailVerificationRes struct {
+}
+
+func (res emailVerificationRes) Code() int {
+	return http.StatusCreated
+}
+
+func (res emailVerificationRes) Headers() map[string]string {
+	return map[string]string{}
+}
+
+func (res emailVerificationRes) Empty() bool {
+	return false
 }

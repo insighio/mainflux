@@ -47,6 +47,14 @@ var (
 	// ErrRecoveryToken indicates error in generating password recovery token.
 	ErrRecoveryToken = errors.New("failed to generate password recovery token")
 
+	// ErrMissingVerificationToken indicates malformed or missing reset token
+	// for verifying email.
+	ErrMissingVerificationToken = errors.New("error missing user verification token")
+
+	// ErrGeneratingResetToken indicates error in generating password recovery
+	// token
+	ErrGeneratingVerificationToken = errors.New("failed to generate user verification token")
+
 	// ErrGetToken indicates error in getting signed token.
 	ErrGetToken = errors.New("failed to fetch signed token")
 
@@ -85,6 +93,10 @@ type Service interface {
 	// host is used for generating reset link.
 	GenerateResetToken(ctx context.Context, email, host string) error
 
+	// GenerateEmailVerificationToken email where mail will be sent.
+	// host is used for generating email verification link.
+	GenerateEmailVerificationToken(ctx context.Context, email, host string) error
+
 	// ChangePassword change users password for authenticated user.
 	ChangePassword(ctx context.Context, authToken, password, oldPassword string) error
 
@@ -97,6 +109,12 @@ type Service interface {
 
 	// ListMembers retrieves everything that is assigned to a group identified by groupID.
 	ListMembers(ctx context.Context, token, groupID string, offset, limit uint64, meta Metadata) (UserPage, error)
+
+	// SendEmailVerification sends email verification link to email.
+	SendEmailVerification(ctx context.Context, host, email, token string) error
+
+	// Verify email of the corresponding user.
+	VerifyEmail(ctx context.Context, emailVerificationToken string) error
 }
 
 // PageMetadata contains page metadata that helps navigation.
@@ -248,6 +266,18 @@ func (svc usersService) GenerateResetToken(ctx context.Context, email, host stri
 	return svc.SendPasswordReset(ctx, host, email, t)
 }
 
+func (svc usersService) GenerateEmailVerificationToken(ctx context.Context, email, host string) error {
+	user, err := svc.users.RetrieveByEmail(ctx, email)
+	if err != nil || user.Email == "" {
+		return ErrUserNotFound
+	}
+	t, err := svc.issue(ctx, user.ID, user.Email, auth.EmailVerificationKey)
+	if err != nil {
+		return errors.Wrap(ErrGeneratingVerificationToken, err)
+	}
+	return svc.SendEmailVerification(ctx, host, email, t)
+}
+
 func (svc usersService) ResetPassword(ctx context.Context, resetToken, password string) error {
 	email, err := svc.identify(ctx, resetToken)
 	if err != nil {
@@ -265,6 +295,20 @@ func (svc usersService) ResetPassword(ctx context.Context, resetToken, password 
 		return err
 	}
 	return svc.users.UpdatePassword(ctx, email, password)
+}
+
+func (svc usersService) VerifyEmail(ctx context.Context, emailVerificationToken string) error {
+	email, err := svc.identify(ctx, emailVerificationToken)
+	if err != nil {
+		return errors.Wrap(ErrUnauthorizedAccess, err)
+	}
+
+	u, err := svc.users.RetrieveByEmail(ctx, email)
+	if err != nil || u.Email == "" {
+		return ErrUserNotFound
+	}
+
+	return svc.users.VerifyEmail(ctx, email)
 }
 
 func (svc usersService) ChangePassword(ctx context.Context, authToken, password, oldPassword string) error {
@@ -297,6 +341,12 @@ func (svc usersService) ChangePassword(ctx context.Context, authToken, password,
 func (svc usersService) SendPasswordReset(_ context.Context, host, email, token string) error {
 	to := []string{email}
 	return svc.email.SendPasswordReset(to, host, token)
+}
+
+// SendEmailVerification sends password recovery link to user
+func (svc usersService) SendEmailVerification(_ context.Context, host, email, token string) error {
+	to := []string{email}
+	return svc.email.SendEmailVerification(to, host, token)
 }
 
 func (svc usersService) ListMembers(ctx context.Context, token, groupID string, offset, limit uint64, m Metadata) (UserPage, error) {

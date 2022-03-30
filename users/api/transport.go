@@ -46,6 +46,20 @@ func MakeHandler(svc users.Service, tracer opentracing.Tracer) http.Handler {
 		opts...,
 	))
 
+`mux.Post("/users/verify-request", kithttp.NewServer(
+		kitot.TraceServer(tracer, "ver-req")(emailVerificationRequestEndpoint(svc)),
+		decodeEmailVerificationRequest,
+		encodeResponse,
+		opts...,
+	))
+
+	mux.Post("/users/verify", kithttp.NewServer(
+		kitot.TraceServer(tracer, "verify")(emailVerificationEndpoint(svc)),
+		decodeEmailVerification,
+		encodeResponse,
+		opts...,
+	))
+
 	mux.Get("/users/profile", kithttp.NewServer(
 		kitot.TraceServer(tracer, "view_profile")(viewProfileEndpoint(svc)),
 		decodeViewProfile,
@@ -256,6 +270,35 @@ func decodeListMembersRequest(_ context.Context, r *http.Request) (interface{}, 
 		limit:    l,
 		metadata: m,
 	}
+	return req, nil
+}
+
+
+func decodeEmailVerificationRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errors.ErrUnsupportedContentType
+	}
+
+	var req emailVerificationReq
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(errors.ErrFailedDecode, err)
+	}
+
+	req.Host = r.Header.Get("Referer")
+	return req, nil
+}
+
+func decodeEmailVerification(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errors.ErrUnsupportedContentType
+	}
+
+	var req emailVerificationTokenReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(errors.ErrFailedDecode, err)
+	}
+
 	return req, nil
 }
 

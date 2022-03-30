@@ -68,6 +68,9 @@ type UserRepository interface {
 
 	// UpdatePassword updates password for user with given email
 	UpdatePassword(ctx context.Context, email, password string) error
+
+	//Populates metadata with 'email verified' flag
+	VerifyEmail(ctx context.Context, email string) error
 }
 
 func isEmail(email string) bool {

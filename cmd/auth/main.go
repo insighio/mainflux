@@ -76,6 +76,7 @@ type config struct {
 	serverKey  string
 	jaegerURL  string
 	resetURL   string
+	verifyURL  string
 }
 
 type tokenConfig struct {

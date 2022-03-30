@@ -66,8 +66,10 @@ const (
 	defAdminPassword    = ""
 	defPassRegex        = "^.{8,}$"
 	defAdminGroup       = "mainflux"
+	defEmailVerifyTemplate    = "emailVerify.tmpl"
 
 	defTokenResetEndpoint = "/reset-request" // URL where user lands after click on the reset link from email
+	defTokenVerifyEndpoint = "/verify"
 
 	defAuthTLS     = "false"
 	defAuthCACerts = ""
@@ -102,8 +104,10 @@ const (
 	envEmailFromName    = "MF_EMAIL_FROM_NAME"
 	envEmailLogLevel    = "MF_EMAIL_LOG_LEVEL"
 	envEmailTemplate    = "MF_EMAIL_TEMPLATE"
+	envEmailVerifyTemplate = "MF_EMAIL_VERIFY_TEMPLATE"
 
-	envTokenResetEndpoint = "MF_TOKEN_RESET_ENDPOINT"
+	envTokenResetEndpoint  = "MF_TOKEN_RESET_ENDPOINT"
+	envTokenVerifyEndpoint = "MF_TOKEN_VERIFY_ENDPOINT"
 
 	envAuthTLS     = "MF_AUTH_CLIENT_TLS"
 	envAuthCACerts = "MF_AUTH_CA_CERTS"
@@ -115,11 +119,13 @@ type config struct {
 	logLevel      string
 	dbConfig      postgres.Config
 	emailConf     email.Config
+	emailVerifyConf email.Config
 	httpPort      string
 	serverCert    string
 	serverKey     string
 	jaegerURL     string
 	resetURL      string
+	verifyURL     string
 	authTLS       bool
 	authCACerts   string
 	authURL       string
@@ -207,15 +213,28 @@ func loadConfig() config {
 		Template:    mainflux.Env(envEmailTemplate, defEmailTemplate),
 	}
 
+	emailVerifyConf := email.Config{
+		FromAddress: mainflux.Env(envEmailFromAddress, defEmailFromAddress),
+		FromName:    mainflux.Env(envEmailFromName, defEmailFromName),
+		Host:        mainflux.Env(envEmailHost, defEmailHost),
+		Port:        mainflux.Env(envEmailPort, defEmailPort),
+		Username:    mainflux.Env(envEmailUsername, defEmailUsername),
+		Password:    mainflux.Env(envEmailPassword, defEmailPassword),
+		Secret:      mainflux.Env(envEmailSecret, defEmailSecret),
+		Template:    mainflux.Env(envEmailVerifyTemplate, defEmailVerifyTemplate),
+	}
+
 	return config{
 		logLevel:      mainflux.Env(envLogLevel, defLogLevel),
 		dbConfig:      dbConfig,
 		emailConf:     emailConf,
+		emailVerifyConf: emailVerifyConf,
 		httpPort:      mainflux.Env(envHTTPPort, defHTTPPort),
 		serverCert:    mainflux.Env(envServerCert, defServerCert),
 		serverKey:     mainflux.Env(envServerKey, defServerKey),
 		jaegerURL:     mainflux.Env(envJaegerURL, defJaegerURL),
 		resetURL:      mainflux.Env(envTokenResetEndpoint, defTokenResetEndpoint),
+		verifyURL:     mainflux.Env(envTokenVerifyEndpoint, defTokenVerifyEndpoint),
 		authTLS:       tls,
 		authCACerts:   mainflux.Env(envAuthCACerts, defAuthCACerts),
 		authURL:       mainflux.Env(envAuthURL, defAuthURL),
@@ -289,7 +308,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServic
 	hasher := bcrypt.New()
 	userRepo := tracing.UserRepositoryMiddleware(postgres.NewUserRepo(database), tracer)
 
-	emailer, err := emailer.New(c.resetURL, &c.emailConf)
+	emailer, err := emailer.New(c.resetURL, c.verifyURL, &c.emailConf, &c.emailVerifyConf)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to configure e-mailing util: %s", err.Error()))
 	}

@@ -15,6 +15,8 @@ import (
 const (
 	loginDuration    = 10 * time.Hour
 	recoveryDuration = 5 * time.Minute
+	emailVerificationDuration = 48 * time.Hour
+	issuerName                = "mainflux.authn"
 )
 
 var (
@@ -127,6 +129,8 @@ func (svc service) Issue(ctx context.Context, token string, key Key) (Key, strin
 		return svc.userKey(ctx, token, key)
 	case RecoveryKey:
 		return svc.tmpKey(recoveryDuration, key)
+        case EmailVerificationKey:
+		return svc.tmpKey(emailVerificationDuration, key)
 	default:
 		return svc.tmpKey(loginDuration, key)
 	}
@@ -163,7 +167,7 @@ func (svc service) Identify(ctx context.Context, token string) (Identity, error)
 	}
 
 	switch key.Type {
-	case APIKey, RecoveryKey, UserKey:
+	case APIKey, RecoveryKey, UserKey, EmailVerificationKey:
 		return Identity{ID: key.IssuerID, Email: key.Subject}, nil
 	default:
 		return Identity{}, ErrUnauthorizedAccess

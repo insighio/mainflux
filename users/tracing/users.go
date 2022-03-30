@@ -17,6 +17,8 @@ const (
 	retrieveByEmailOp = "retrieve_by_email"
 	updatePassword    = "update_password"
 	members           = "members"
+	sendEmailVerification = "send_email_verification"
+	verifyEmail        = "verify_email"
 )
 
 var _ users.UserRepository = (*userRepositoryMiddleware)(nil)
@@ -73,6 +75,14 @@ func (urm userRepositoryMiddleware) UpdatePassword(ctx context.Context, email, p
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
 	return urm.repo.UpdatePassword(ctx, email, password)
+}
+
+func (urm userRepositoryMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) error {
+	span := createSpan(ctx, urm.tracer, verifyEmail)
+	defer span.Finish()
+	ctx = opentracing.ContextWithSpan(ctx, span)
+
+	return urm.repo.VerifyEmail(ctx, emailVerificationToken)
 }
 
 func (urm userRepositoryMiddleware) RetrieveAll(ctx context.Context, offset, limit uint64, ids []string, email string, um users.Metadata) (users.UserPage, error) {

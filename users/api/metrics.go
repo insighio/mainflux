@@ -126,3 +126,30 @@ func (ms *metricsMiddleware) ListMembers(ctx context.Context, token, groupID str
 
 	return ms.svc.ListMembers(ctx, token, groupID, offset, limit, gm)
 }
+
+func (ms *metricsMiddleware) GenerateEmailVerificationToken(ctx context.Context, email, host string) (err error) {
+	defer func(begin time.Time) {
+		ms.counter.With("method", "generate_email_verification_token").Add(1)
+		ms.latency.With("method", "generate_email_verification_token").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return ms.svc.GenerateEmailVerificationToken(ctx, email, host)
+}
+
+func (ms *metricsMiddleware) SendEmailVerification(ctx context.Context, host, email, token string) error {
+	defer func(begin time.Time) {
+		ms.counter.With("method", "send_email_verification").Add(1)
+		ms.latency.With("method", "send_email_verification").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return ms.svc.SendEmailVerification(ctx, host, email, token)
+}
+
+func (ms *metricsMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) (err error) {
+	defer func(begin time.Time) {
+		ms.counter.With("method", "verify_email").Add(1)
+		ms.latency.With("method", "verify_email").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return ms.svc.VerifyEmail(ctx, emailVerificationToken)
+}

@@ -121,3 +121,27 @@ func (req listMemberGroupReq) validate() error {
 
 	return nil
 }
+
+type emailVerificationReq struct {
+	Email string `json:"email"`
+	Host  string `json:"host"`
+}
+
+func (req emailVerificationReq) validate() error {
+	if req.Email == "" || req.Host == "" {
+		return users.ErrMalformedEntity
+	}
+	return nil
+}
+
+type emailVerificationTokenReq struct {
+	Token    string `json:"token"`
+}
+
+func (req emailVerificationTokenReq) validate() error {
+	if req.Token == "" {
+		return users.ErrMissingVerificationToken
+	}
+	return nil
+}
+

@@ -48,7 +48,7 @@ type Agent struct {
 	auth smtp.Auth
 	addr string
 	log  logger.Logger
-	tmpl *template.Template
+	//tmpl *template.Template
 }
 
 // New creates new email agent
@@ -65,17 +65,13 @@ func New(c *Config) (*Agent, error) {
 	}
 	a.addr = fmt.Sprintf("%s:%s", c.Host, c.Port)
 
-	tmpl, err := template.ParseFiles(c.Template)
-	if err != nil {
-		return a, errors.Wrap(errParseTemplate, err)
-	}
-	a.tmpl = tmpl
 	return a, nil
 }
 
 // Send sends e-mail
-func (a *Agent) Send(To []string, From, Subject, Header, Content, Footer string) error {
-	if a.tmpl == nil {
+func (a *Agent) Send(To []string, From, Subject, Header, Content, Footer string, Template string) error {
+	selectedTmpl, err := template.ParseFiles(Template)
+	if err != nil {
 		return errMissingEmailTemplate
 	}
 
@@ -92,7 +88,7 @@ func (a *Agent) Send(To []string, From, Subject, Header, Content, Footer string)
 		tmpl.From = a.conf.FromName
 	}
 
-	if err := a.tmpl.Execute(email, tmpl); err != nil {
+	if err := selectedTmpl.Execute(email, tmpl); err != nil {
 		return errors.Wrap(errExecTemplate, err)
 	}
 
