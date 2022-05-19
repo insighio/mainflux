@@ -1,0 +1,42 @@
+name: Docker Image CI
+
+on: workflow_dispatch
+
+jobs:
+  build-users:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build users
+      run: docker build --no-cache --build-arg SVC=users --build-arg GOARCH=amd64 --build-arg GOARM= --tag=ghcr.io/insighio/users:latest -f docker/Dockerfile .
+    - name: Publish users
+      run: docker push ghcr.io/insighio/users:latest
+  
+  build-authn:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build authn
+      run: docker build --no-cache --build-arg SVC=authn --build-arg GOARCH=amd64 --build-arg GOARM= --tag=ghcr.io/insighio/authn:latest -f docker/Dockerfile .
+    - name: Publish authn
+      run: docker push ghcr.io/insighio/authn:latest
+  
+  
+  build-influxdb-writer:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build influxdb-writer
+      run: docker build --no-cache --build-arg SVC=influxdb-writer --build-arg GOARCH=amd64 --build-arg GOARM= --tag=ghcr.io/insighio/influxdb-writer:latest -f docker/Dockerfile .
+    - name: Publish influxdb-writer
+      run: docker push ghcr.io/insighio/influxdb-writer:latest 
+ 
+  build-lora:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build lora
+      run: docker build --no-cache --build-arg SVC=lora --build-arg GOARCH=amd64 --build-arg GOARM= --tag=ghcr.io/insighio/lora:latest -f docker/Dockerfile .
+    - name: Publish lora
+      run: docker push ghcr.io/insighio/lora:latest
+
