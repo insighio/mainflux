@@ -50,7 +50,7 @@ var (
 
 	// ErrGeneratingResetToken indicates error in generating password recovery
 	// token
-	ErrGeneratingVerificationToken = errors.New("error missing verification token")
+	ErrGeneratingVerificationToken = errors.New("error generating verification token")
 
 	// ErrGetToken indicates error in getting signed token
 	ErrGetToken = errors.New("Get signed token failed")

@@ -23,10 +23,7 @@ type emailer struct {
 // New creates new emailer utility
 func New(reset_url, verify_url string, configReset *email.Config, configVerify *email.Config) (users.Emailer, error) {
 	e, err := email.New(configReset)
-	if err != nil {
-		return nil, err
-	}
-	return &emailer{resetURL: reset_url, verifyURL: verify_url, agent: e, resetTmpl: configReset.Template, verifyTmpl: configVerify.Template}, nil
+	return &emailer{resetURL: reset_url, verifyURL: verify_url, agent: e, resetTmpl: configReset.Template, verifyTmpl: configVerify.Template}, err
 }
 
 func (e *emailer) SendPasswordReset(To []string, host string, token string) errors.Error {
