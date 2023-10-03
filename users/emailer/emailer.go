@@ -12,11 +12,11 @@ import (
 var _ users.Emailer = (*emailer)(nil)
 
 type emailer struct {
-	resetURL  string
-	verifyURL string
-	agent     *email.Agent
-	resetTmpl string
-	verifyTmpl string 
+	resetURL   string
+	verifyURL  string
+	agent      *email.Agent
+	resetTmpl  string
+	verifyTmpl string
 }
 
 // New creates new emailer utility

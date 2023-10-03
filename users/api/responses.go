@@ -268,6 +268,7 @@ func (res removeUserFromGroupRes) Empty() bool {
 }
 
 type emailVerificationRes struct {
+	Msg string `json:"msg"`
 }
 
 func (res emailVerificationRes) Code() int {

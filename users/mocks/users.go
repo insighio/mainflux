@@ -119,3 +119,10 @@ func (urm *userRepositoryMock) UpdatePassword(_ context.Context, token, password
 	}
 	return nil
 }
+
+func (urm *userRepositoryMock) VerifyEmail(_ context.Context, email string) error {
+	urm.mu.Lock()
+	defer urm.mu.Unlock()
+
+	return nil
+}
