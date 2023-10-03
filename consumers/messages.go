@@ -30,20 +30,21 @@ func Start(sub messaging.Subscriber, consumer Consumer, transformer transformers
 	}
 
 	for _, subject := range subjects {
-		if err := sub.Subscribe(subject, handler(transformer, consumer)); err != nil {
+		if err := sub.Subscribe(subject, handler(transformer, consumer, logger)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func handler(t transformers.Transformer, c Consumer) messaging.MessageHandler {
+func handler(t transformers.Transformer, c Consumer, logger logger.Logger) messaging.MessageHandler {
 	return func(msg messaging.Message) error {
 		m := interface{}(msg)
 		var err error
 		if t != nil {
 			m, err = t.Transform(msg)
 			if err != nil {
+				logger.Warn(fmt.Sprintf("Failed to transform received message: %s, message: %s", err, string(msg.String())))
 				return err
 			}
 		}
