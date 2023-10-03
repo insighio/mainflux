@@ -54,21 +54,21 @@ const (
 	defServerKey     = ""
 	defJaegerURL     = ""
 
-	defEmailHost        = "localhost"
-	defEmailPort        = "25"
-	defEmailUsername    = "root"
-	defEmailPassword    = ""
-	defEmailSecret      = ""
-	defEmailFromAddress = ""
-	defEmailFromName    = ""
-	defEmailTemplate    = "email.tmpl"
-	defAdminEmail       = ""
-	defAdminPassword    = ""
-	defPassRegex        = "^.{8,}$"
-	defAdminGroup       = "mainflux"
-	defEmailVerifyTemplate    = "emailVerify.tmpl"
+	defEmailHost           = "localhost"
+	defEmailPort           = "25"
+	defEmailUsername       = "root"
+	defEmailPassword       = ""
+	defEmailSecret         = ""
+	defEmailFromAddress    = ""
+	defEmailFromName       = ""
+	defEmailTemplate       = "email.tmpl"
+	defAdminEmail          = ""
+	defAdminPassword       = ""
+	defPassRegex           = "^.{8,}$"
+	defAdminGroup          = "mainflux"
+	defEmailVerifyTemplate = "emailVerify.tmpl"
 
-	defTokenResetEndpoint = "/reset-request" // URL where user lands after click on the reset link from email
+	defTokenResetEndpoint  = "/reset-request" // URL where user lands after click on the reset link from email
 	defTokenVerifyEndpoint = "/verify"
 
 	defAuthTLS     = "false"
@@ -95,15 +95,15 @@ const (
 	envAdminPassword = "MF_USERS_ADMIN_PASSWORD"
 	envPassRegex     = "MF_USERS_PASS_REGEX"
 
-	envEmailHost        = "MF_EMAIL_HOST"
-	envEmailPort        = "MF_EMAIL_PORT"
-	envEmailUsername    = "MF_EMAIL_USERNAME"
-	envEmailPassword    = "MF_EMAIL_PASSWORD"
-	envEmailSecret      = "MF_EMAIL_SECRET"
-	envEmailFromAddress = "MF_EMAIL_FROM_ADDRESS"
-	envEmailFromName    = "MF_EMAIL_FROM_NAME"
-	envEmailLogLevel    = "MF_EMAIL_LOG_LEVEL"
-	envEmailTemplate    = "MF_EMAIL_TEMPLATE"
+	envEmailHost           = "MF_EMAIL_HOST"
+	envEmailPort           = "MF_EMAIL_PORT"
+	envEmailUsername       = "MF_EMAIL_USERNAME"
+	envEmailPassword       = "MF_EMAIL_PASSWORD"
+	envEmailSecret         = "MF_EMAIL_SECRET"
+	envEmailFromAddress    = "MF_EMAIL_FROM_ADDRESS"
+	envEmailFromName       = "MF_EMAIL_FROM_NAME"
+	envEmailLogLevel       = "MF_EMAIL_LOG_LEVEL"
+	envEmailTemplate       = "MF_EMAIL_TEMPLATE"
 	envEmailVerifyTemplate = "MF_EMAIL_VERIFY_TEMPLATE"
 
 	envTokenResetEndpoint  = "MF_TOKEN_RESET_ENDPOINT"
@@ -116,23 +116,23 @@ const (
 )
 
 type config struct {
-	logLevel      string
-	dbConfig      postgres.Config
-	emailConf     email.Config
+	logLevel        string
+	dbConfig        postgres.Config
+	emailConf       email.Config
 	emailVerifyConf email.Config
-	httpPort      string
-	serverCert    string
-	serverKey     string
-	jaegerURL     string
-	resetURL      string
-	verifyURL     string
-	authTLS       bool
-	authCACerts   string
-	authURL       string
-	authTimeout   time.Duration
-	adminEmail    string
-	adminPassword string
-	passRegex     *regexp.Regexp
+	httpPort        string
+	serverCert      string
+	serverKey       string
+	jaegerURL       string
+	resetURL        string
+	verifyURL       string
+	authTLS         bool
+	authCACerts     string
+	authURL         string
+	authTimeout     time.Duration
+	adminEmail      string
+	adminPassword   string
+	passRegex       *regexp.Regexp
 }
 
 func main() {
@@ -225,23 +225,23 @@ func loadConfig() config {
 	}
 
 	return config{
-		logLevel:      mainflux.Env(envLogLevel, defLogLevel),
-		dbConfig:      dbConfig,
-		emailConf:     emailConf,
+		logLevel:        mainflux.Env(envLogLevel, defLogLevel),
+		dbConfig:        dbConfig,
+		emailConf:       emailConf,
 		emailVerifyConf: emailVerifyConf,
-		httpPort:      mainflux.Env(envHTTPPort, defHTTPPort),
-		serverCert:    mainflux.Env(envServerCert, defServerCert),
-		serverKey:     mainflux.Env(envServerKey, defServerKey),
-		jaegerURL:     mainflux.Env(envJaegerURL, defJaegerURL),
-		resetURL:      mainflux.Env(envTokenResetEndpoint, defTokenResetEndpoint),
-		verifyURL:     mainflux.Env(envTokenVerifyEndpoint, defTokenVerifyEndpoint),
-		authTLS:       tls,
-		authCACerts:   mainflux.Env(envAuthCACerts, defAuthCACerts),
-		authURL:       mainflux.Env(envAuthURL, defAuthURL),
-		authTimeout:   authTimeout,
-		adminEmail:    mainflux.Env(envAdminEmail, defAdminEmail),
-		adminPassword: mainflux.Env(envAdminPassword, defAdminPassword),
-		passRegex:     passRegex,
+		httpPort:        mainflux.Env(envHTTPPort, defHTTPPort),
+		serverCert:      mainflux.Env(envServerCert, defServerCert),
+		serverKey:       mainflux.Env(envServerKey, defServerKey),
+		jaegerURL:       mainflux.Env(envJaegerURL, defJaegerURL),
+		resetURL:        mainflux.Env(envTokenResetEndpoint, defTokenResetEndpoint),
+		verifyURL:       mainflux.Env(envTokenVerifyEndpoint, defTokenVerifyEndpoint),
+		authTLS:         tls,
+		authCACerts:     mainflux.Env(envAuthCACerts, defAuthCACerts),
+		authURL:         mainflux.Env(envAuthURL, defAuthURL),
+		authTimeout:     authTimeout,
+		adminEmail:      mainflux.Env(envAdminEmail, defAdminEmail),
+		adminPassword:   mainflux.Env(envAdminPassword, defAdminPassword),
+		passRegex:       passRegex,
 	}
 
 }
