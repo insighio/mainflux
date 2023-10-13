@@ -160,19 +160,19 @@ func viewProfileEndpoint(svc users.Service) endpoint.Endpoint {
 	}
 }
 
-func listUsersEndpoint(svc users.Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(listUsersReq)
-		if err := req.validate(); err != nil {
-			return users.UserPage{}, err
-		}
-		up, err := svc.ListUsers(ctx, req.token, req.offset, req.limit, req.email, req.metadata)
-		if err != nil {
-			return users.UserPage{}, err
-		}
-		return buildUsersResponse(up), nil
-	}
-}
+// func listUsersEndpoint(svc users.Service) endpoint.Endpoint {
+// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
+// 		req := request.(listUsersReq)
+// 		if err := req.validate(); err != nil {
+// 			return users.UserPage{}, err
+// 		}
+// 		up, err := svc.ListUsers(ctx, req.token, req.offset, req.limit, req.email, req.metadata)
+// 		if err != nil {
+// 			return users.UserPage{}, err
+// 		}
+// 		return buildUsersResponse(up), nil
+// 	}
+// }
 
 func updateUserEndpoint(svc users.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
