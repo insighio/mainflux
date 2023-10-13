@@ -239,7 +239,7 @@ func (ur userRepository) UpdatePassword(ctx context.Context, email, password str
 }
 
 func (ur userRepository) VerifyEmail(ctx context.Context, email string) error {
-	user, err := ur.RetrieveByID(ctx, email)
+	user, err := ur.RetrieveByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
