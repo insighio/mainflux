@@ -152,6 +152,9 @@ github.com/inconshreveable/mousetrap
 github.com/influxdata/influxdb/client/v2
 github.com/influxdata/influxdb/models
 github.com/influxdata/influxdb/pkg/escape
+# github.com/insighio/senml v1.2.0
+## explicit
+github.com/insighio/senml
 # github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 ## explicit
 github.com/jmoiron/sqlx
@@ -179,9 +182,6 @@ github.com/mainflux/mproxy/pkg/mqtt
 github.com/mainflux/mproxy/pkg/session
 github.com/mainflux/mproxy/pkg/tls
 github.com/mainflux/mproxy/pkg/websocket
-# github.com/mainflux/senml v1.5.0
-## explicit
-github.com/mainflux/senml
 # github.com/mattn/go-colorable v0.1.4
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.11

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/insighio/senml"
 	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/mainflux/mainflux/pkg/uuid"
 	"github.com/mainflux/mainflux/twins"
-	"github.com/mainflux/senml"
 )
 
 const publisher = "twins"
