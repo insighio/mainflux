@@ -20,6 +20,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/influxdata/influxdb v1.8.1
+	github.com/insighio/senml v1.1.7 // indirect
 	github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.7.0
@@ -40,7 +41,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.7.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.8.0
 	github.com/subosito/gotenv v1.2.0
 	github.com/uber/jaeger-client-go v2.24.0+incompatible
 	go.mongodb.org/mongo-driver v1.3.5

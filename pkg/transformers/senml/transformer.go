@@ -4,10 +4,10 @@
 package senml
 
 import (
+	"github.com/insighio/senml"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/mainflux/mainflux/pkg/transformers"
-	"github.com/mainflux/senml"
 )
 
 const (
