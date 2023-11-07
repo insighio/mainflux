@@ -36,11 +36,12 @@ var channelPartRegExp = regexp.MustCompile(`^channels/([\w\-]+)/messages(/[^?]*)
 var errMalformedSubtopic = errors.New("malformed subtopic")
 
 var (
-	logger  log.Logger
-	service coap.Service
+	logger      log.Logger
+	service     coap.Service
+	authQueryV2 = "authorization"
 )
 
-//MakeHTTPHandler creates handler for version endpoint.
+// MakeHTTPHandler creates handler for version endpoint.
 func MakeHTTPHandler() http.Handler {
 	b := bone.New()
 	b.GetFunc("/version", mainflux.Version(protocol))
@@ -58,7 +59,7 @@ func MakeCoAPHandler(svc coap.Service, l log.Logger) mux.HandlerFunc {
 }
 
 func sendResp(w mux.ResponseWriter, resp *message.Message) {
-	if err := w.Client().WriteMessage(resp); err != nil {
+	if err := w.SetResponse(resp.Code, message.AppJSON, resp.Body); err != nil {
 		logger.Warn(fmt.Sprintf("Can't set response: %s", err))
 	}
 }
@@ -106,7 +107,8 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 	case codes.POST:
 		err = service.Publish(context.Background(), key, msg)
 	default:
-		resp.Code = codes.NotFound
+		resp.Code = codes.Created
+		err = service.Publish(m.Context, key, msg)
 		return
 	}
 	if err != nil {
@@ -166,7 +168,7 @@ func parseKey(msg *mux.Message) (string, error) {
 		return "", err
 	}
 	vars := strings.Split(auth, "=")
-	if len(vars) != 2 || vars[0] != authQuery {
+	if len(vars) != 2 || (vars[0] != authQuery && vars[0] != authQueryV2) {
 		return "", coap.ErrUnauthorized
 	}
 	return vars[1], nil
