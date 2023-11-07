@@ -105,10 +105,10 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 		}
 		service.Unsubscribe(context.Background(), key, msg.Channel, msg.Subtopic, m.Token.String())
 	case codes.POST:
-		err = service.Publish(context.Background(), key, msg)
-	default:
 		resp.Code = codes.Created
 		err = service.Publish(m.Context, key, msg)
+	default:
+		resp.Code = codes.NotFound
 		return
 	}
 	if err != nil {
