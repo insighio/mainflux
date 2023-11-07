@@ -1,8 +1,30 @@
 openapi: 3.0.1
 info:
   title: Mainflux Notifiers service
-  description: HTTP API for Notifiers service.
-  version: "1.0.0"
+  description: |
+    HTTP API for Notifiers service.
+    Some useful links:
+    - [The Mainflux repository](https://github.com/mainflux/mainflux)
+  contact:
+    email: info@mainflux.com
+  license:
+    name: Apache 2.0
+    url: https://github.com/mainflux/mainflux/blob/master/LICENSE
+  version: 0.14.0
+
+servers:
+  - url: http://localhost:9014
+  - url: https://localhost:9014
+  - url: http://localhost:9015
+  - url: https://localhost:9015
+  
+tags:
+  - name: notifiers
+    description: Everything about your Notifiers
+    externalDocs:
+      description: Find out more about notifiers
+      url: http://docs.mainflux.io/
+      
 paths:
   /subscriptions:
     post:
@@ -105,6 +127,17 @@ components:
           type: string
           example: user@example.com
           description: The contact of the user to which the notification will be sent.
+    CreateSubscription:
+      type: object
+      properties:
+        topic:
+          type: string
+          example: topic.subtopic
+          description: Topic to which the user subscribes.
+        contact:
+          type: string
+          example: user@example.com
+          description: The contact of the user to which the notification will be sent.          
     Page:
       type: object
       properties:
@@ -174,7 +207,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Subscription"
+            $ref: "#/components/schemas/CreateSubscription"
 
   responses:
     Create:

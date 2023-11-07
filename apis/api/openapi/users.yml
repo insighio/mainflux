@@ -1,162 +1,319 @@
-openapi: 3.0.1
+openapi: 3.0.3
 info:
-  title: Mainflux users service
-  description: HTTP API for managing platform users.
-  version: "1.0.0"
+  title: Mainflux Users Service
+  description: |
+    This is the Users Server based on the OpenAPI 3.0 specification.  It is the HTTP API for managing platform users. You can now help us improve the API whether it's by making changes to the definition itself or to the code.
+    Some useful links:
+    - [The Mainflux repository](https://github.com/mainflux/mainflux)
+  contact:
+    email: info@mainflux.com
+  license:
+    name: Apache 2.0
+    url: https://github.com/mainflux/mainflux/blob/master/LICENSE
+  version: 0.14.0
+
+servers:
+  - url: http://localhost:9002
+  - url: https://localhost:9002
+
+tags:
+  - name: Users
+    description: Everything about your Users
+    externalDocs:
+      description: Find out more about users
+      url: http://docs.mainflux.io/
+  - name: Groups
+    description: Everything about your Groups
+    externalDocs:
+      description: Find out more about users groups
+      url: http://docs.mainflux.io/
 
 paths:
   /users:
     post:
+      tags:
+        - Users
       summary: Registers user account
       description: |
         Registers new user account given email and password. New account will
         be uniquely identified by its email address.
-      tags:
-        - users
       requestBody:
         $ref: "#/components/requestBodies/UserCreateReq"
       responses:
-        '201':
+        "201":
           $ref: "#/components/responses/UserCreateRes"
-        '400':
+        "400":
           description: Failed due to malformed JSON.
-        '401':
+        "401":
           description: Missing or invalid access token provided.
-        '409':
-          description: Failed due to using an existing email address.
-        '415':
+        "409":
+          description: Failed due to using an existing identity.
+        "415":
           description: Missing or invalid content type.
-        '500':
+        "500":
           $ref: "#/components/responses/ServiceError"
+
     get:
-      summary: Retrieves users
+      tags:
+        - Users
+      summary: List users
       description: |
         Retrieves a list of users. Due to performance concerns, data
-        is retrieved in subsets. The API things must ensure that the entire
+        is retrieved in subsets. The API must ensure that the entire
         dataset is consumed either by making subsequent requests, or by
         increasing the subset size of the initial request.
-      tags:
-        - users
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Offset"
         - $ref: "#/components/parameters/Metadata"
         - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/UserName"
+        - $ref: "#/components/parameters/UserIdentity"
+        - $ref: "#/components/parameters/Tags"
+        - $ref: "#/components/parameters/Owner"
+        - $ref: "#/components/parameters/UserVisibility"
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          $ref: "#/components/responses/UsersPageRes"
-        '400':
+        "200":
+          $ref: "#/components/responses/UserPageRes"
+        "400":
           description: Failed due to malformed query parameters.
-        '401':
-          description: Missing or invalid access token provided.
-        '403':
-          description: This endpoint is available only for administrators.
-        '404':
+        "401":
+          description: |
+            Missing or invalid access token provided.
+            This endpoint is available only for administrators.
+        "404":
           description: A non-existent entity request.
-        '422':
+        "422":
           description: Database can't process request.
-        '500':
+        "500":
           $ref: "#/components/responses/ServiceError"
-    put:
-      summary: Updates info on currently logged in user.
-      description: |
-        Updates info on currently logged in user. Info is updated using
-        authorization token and the new received info.
-      tags:
-        - users
-      requestBody:
-        $ref: "#/components/requestBodies/UserUpdateReq"
-      responses:
-        '200':
-          description: User updated.
-        '400':
-          description: Failed due to malformed JSON.
-        '404':
-          description: Failed due to non existing user.
-        '401':
-          description: Missing or invalid access token provided.
-        '500':
-         $ref: "#/components/responses/ServiceError"
+
   /users/profile:
-     get:
+    get:
       summary: Gets info on currently logged in user.
       description: |
         Gets info on currently logged in user. Info is obtained using
         authorization token
       tags:
-        - users
+        - Users
+      security:
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/UserRes"
-        '400':
+        "400":
           description: Failed due to malformed query parameters.
-        '401':
+        "401":
           description: Missing or invalid access token provided.
-        '500':
+        "500":
           $ref: "#/components/responses/ServiceError"
-  /groups/{groupId}:
+
+  /users/{userID}:
     get:
-      summary: Retrieves users
+      summary: Retrieves a user
       description: |
-        Retrieves a list of users that belong to a group. Due to performance concerns, data
-        is retrieved in subsets. The API things must ensure that the entire
-        dataset is consumed either by making subsequent requests, or by
-        increasing the subset size of the initial request.
+        Retrieves a specific user that is identifier by the user ID.
       tags:
-        - users
+        - Users
       parameters:
-        - $ref: "#/components/parameters/GroupId"
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
-        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/UserID"
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          $ref: "#/components/responses/UsersPageRes"
-        '400':
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
           description: Failed due to malformed query parameters.
-        '401':
+        "401":
           description: Missing or invalid access token provided.
-        '404':
+        "404":
           description: A non-existent entity request.
-        '422':
+        "422":
           description: Database can't process request.
-        '500':
+        "500":
           $ref: "#/components/responses/ServiceError"
-  /tokens:
-    post:
-      summary: User authentication
-      description: Generates an access token when provided with proper credentials.
+
+    patch:
+      summary: Updates name and metadata of the user.
+      description: |
+        Updates name and metadata of the user with provided ID. Name and metadata
+        is updated using authorization token and the new received info.
       tags:
-        - users
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
       requestBody:
-        $ref: "#/components/requestBodies/UserCreateReq"
+        $ref: "#/components/requestBodies/UserUpdateReq"
+      security:
+        - bearerAuth: []
       responses:
-        '201':
-          description: User authenticated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Token'
-        '400':
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
           description: Failed due to malformed JSON.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Failed due to using invalid credentials.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '415':
-          description: Missing or invalid content type.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          $ref: '#/components/responses/ServiceError'
+        "404":
+          description: Failed due to non existing user.
+        "401":
+          description: Missing or invalid access token provided.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/{userID}/tags:
+    patch:
+      summary: Updates tags the user.
+      description: |
+        Updates tags of the user with provided ID. Tags is updated using
+        authorization token and the new tags received in request.
+      tags:
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        $ref: "#/components/requestBodies/UserUpdateTagsReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
+          description: Failed due to malformed JSON.
+        "404":
+          description: Failed due to non existing user.
+        "401":
+          description: Missing or invalid access token provided.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/{userID}/identity:
+    patch:
+      summary: Updates Identity of the user.
+      description: |
+        Updates identity of the user with provided ID. Identity is
+        updated using authorization token and the new received identity.
+      tags:
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        $ref: "#/components/requestBodies/UserUpdateIdentityReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
+          description: Failed due to malformed JSON.
+        "404":
+          description: Failed due to non existing user.
+        "401":
+          description: Missing or invalid access token provided.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/{userID}/owner:
+    patch:
+      summary: Updates the user owner.
+      description: |
+        Updates owner for the user with provided ID. Owner is updated using
+        authorization token and a new owner identifier received in request.
+      tags:
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        $ref: "#/components/requestBodies/UserUpdateOwnerReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
+          description: Failed due to malformed JSON.
+        "404":
+          description: Failed due to non existing user.
+        "401":
+          description: Missing or invalid access token provided.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/{userID}/disable:
+    post:
+      summary: Disables a user
+      description: |
+        Disables a specific user that is identifier by the user ID.
+      tags:
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/{userID}/enable:
+    post:
+      summary: Enables a user
+      description: |
+        Enables a specific user that is identifier by the user ID.
+      tags:
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/secret:
+    patch:
+      summary: Updates Secret of currently logged in user.
+      description: |
+        Updates secret of currently logged in user. Secret is updated using
+        authorization token and the new received info.
+      tags:
+        - Users
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        $ref: "#/components/requestBodies/UserUpdateSecretReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/UserRes"
+        "400":
+          description: Failed due to malformed JSON.
+        "404":
+          description: Failed due to non existing user.
+        "401":
+          description: Missing or invalid access token provided.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
   /password/reset-request:
     post:
       summary: User password reset request
@@ -164,156 +321,798 @@ paths:
         Generates a reset token and sends and
         email with link for resetting password.
       tags:
-        - users
+        - Users
       parameters:
-        - $ref: "#/components/parameters/Referer"
+        - $ref: "#/components/parameters/Referrer"
       requestBody:
-        $ref: '#/components/requestBodies/RequestPasswordReset'
+        $ref: "#/components/requestBodies/RequestPasswordReset"
       responses:
-        '201':
-          description: Users link for reseting password.
-        '400':
+        "201":
+          description: Users link for resetting password.
+        "400":
           description: Failed due to malformed JSON.
-        '415':
+        "415":
           description: Missing or invalid content type.
-        '500':
-          $ref: '#/components/responses/ServiceError'
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
   /password/reset:
     put:
       summary: User password reset endpoint
       description: |
-        When user gets reset token, after he submited
+        When user gets reset token, after he submitted
         email to `/password/reset-request`, posting a
           new password along to this endpoint will change password.
       tags:
-        - users
+        - Users
       requestBody:
-        $ref: '#/components/requestBodies/PasswordReset'
+        $ref: "#/components/requestBodies/PasswordReset"
       responses:
-        '201':
+        "201":
           description: User link .
-        '400':
+        "400":
           description: Failed due to malformed JSON.
-        '415':
+        "415":
           description: Missing or invalid content type.
-        '500':
-          $ref: '#/components/responses/ServiceError'
-  /password:
-    patch:
-      summary: User password change endpoint
-      description: |
-        When authenticated user wants to change password.
-      tags:
-        - users
-      requestBody:
-        $ref: '#/components/requestBodies/PasswordChange'
-      responses:
-        '201':
-          description: User link .
-        '400':
-          description: Failed due to malformed JSON.
-        '415':
-          description: Missing or invalid content type.
-        '500':
+        "500":
           $ref: "#/components/responses/ServiceError"
-  /users/{userId}/enable:
-    post:
-      summary: Enables a user account
-      description: |
-        Enables a disabled user account for a given user ID.
+
+  /groups/{groupID}/users:
+    get:
       tags:
-        - users
-      parameters:
-        - $ref: "#/components/parameters/UserId"
-      responses:       
-        '200':
-          description: User enabled.
-        '400':
-          description: Failed due to malformed JSON.
-        '404':
-          description: Failed due to non existing user.
-        '401':
-          description: Missing or invalid access token provided.
-        '500':
-         $ref: "#/components/responses/ServiceError"
-  /users/{userId}/disable:
-    post:
-      summary: Disables a user account
+        - Users
+      summary: List users in a group
       description: |
-        Disables a user account for a given user ID.
-      tags:
-        - users
+        Retrieves a list of users in a group. Due to performance concerns, data
+        is retrieved in subsets. The API must ensure that the entire
+        dataset is consumed either by making subsequent requests, or by
+        increasing the subset size of the initial request.
       parameters:
-        - $ref: "#/components/parameters/UserId"
-      responses:       
-        '200':
-          description: User disabled.
-        '400':
+        - $ref: "#/components/parameters/GroupID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Level"
+        - $ref: "#/components/parameters/Tree"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/GroupName"
+        - $ref: "#/components/parameters/ParentID"
+        - $ref: "#/components/parameters/OwnerID"
+      responses:
+        "200":
+          $ref: "#/components/responses/MembersPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: |
+            Missing or invalid access token provided.
+            This endpoint is available only for administrators.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /channels/{channelID}/users:
+    get:
+      tags:
+        - Users
+      summary: List users in a channel
+      description: |
+        Retrieves a list of users in a channel. Due to performance concerns, data
+        is retrieved in subsets. The API must ensure that the entire
+        dataset is consumed either by making subsequent requests, or by
+        increasing the subset size of the initial request.
+      parameters:
+        - $ref: "#/components/parameters/ChannelID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Level"
+        - $ref: "#/components/parameters/Tree"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/ChannelName"
+        - $ref: "#/components/parameters/ParentID"
+        - $ref: "#/components/parameters/OwnerID"
+      responses:
+        "200":
+          $ref: "#/components/responses/MembersPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: |
+            Missing or invalid access token provided.
+            This endpoint is available only for administrators.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/tokens/issue:
+    post:
+      summary: Issue Token
+      description: |
+        Issue Access and Refresh Token used for authenticating into the system.
+      tags:
+        - Users
+      requestBody:
+        $ref: "#/components/requestBodies/IssueTokenReq"
+      responses:
+        "200":
+          $ref: "#/components/responses/TokenRes"
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/tokens/refresh:
+    post:
+      summary: Refresh Token
+      description: |
+        Refreshes Access and Refresh Token used for authenticating into the system.
+      tags:
+        - Users
+      security:
+        - refreshAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/TokenRes"
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups:
+    post:
+      tags:
+        - Groups
+      summary: Creates new group
+      description: |
+        Creates new group that can be used for grouping entities. New account will
+        be uniquely identified by its identity.
+      requestBody:
+        $ref: "#/components/requestBodies/GroupCreateReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          $ref: "#/components/responses/GroupCreateRes"
+        "400":
           description: Failed due to malformed JSON.
-        '404':
-          description: Failed due to non existing user.
-        '401':
+        "401":
           description: Missing or invalid access token provided.
-        '500':
-         $ref: "#/components/responses/ServiceError"
+        "409":
+          description: Failed due to using an existing identity.
+        "415":
+          description: Missing or invalid content type.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+    get:
+      summary: Lists groups.
+      description: |
+        Lists groups up to a max level of hierarchy that can be fetched in one
+        request ( max level = 5). Result can be filtered by metadata. Groups will
+        be returned as JSON array or JSON tree. Due to performance concerns, result
+        is returned in subsets.
+      tags:
+        - Groups
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Level"
+        - $ref: "#/components/parameters/Tree"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/GroupName"
+        - $ref: "#/components/parameters/ParentID"
+        - $ref: "#/components/parameters/OwnerID"
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}:
+    get:
+      summary: Gets group info.
+      description: |
+        Gets info on a group specified by id.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+    put:
+      summary: Updates group data.
+      description: |
+        Updates Name, Description or Metadata of a group.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/GroupUpdateReq"
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}/children:
+    get:
+      summary: List children of a certain group
+      description: |
+        Lists groups up to a max level of hierarchy that can be fetched in one
+        request ( max level = 5). Result can be filtered by metadata. Groups will
+        be returned as JSON array or JSON tree. Due to performance concerns, result
+        is returned in subsets.
+      tags:
+        - Groups
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Level"
+        - $ref: "#/components/parameters/Tree"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/GroupName"
+        - $ref: "#/components/parameters/ParentID"
+        - $ref: "#/components/parameters/OwnerID"
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}/parents:
+    get:
+      summary: List parents of a certain group
+      description: |
+        Lists groups up to a max level of hierarchy that can be fetched in one
+        request ( max level = 5). Result can be filtered by metadata. Groups will
+        be returned as JSON array or JSON tree. Due to performance concerns, result
+        is returned in subsets.
+      tags:
+        - Groups
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Level"
+        - $ref: "#/components/parameters/Tree"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/GroupName"
+        - $ref: "#/components/parameters/ParentID"
+        - $ref: "#/components/parameters/OwnerID"
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}/enable:
+    post:
+      summary: Enables a group
+      description: |
+        Enables a specific group that is identifier by the group ID.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}/disable:
+    post:
+      summary: Disables a group
+      description: |
+        Disables a specific group that is identifier by the group ID.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}/users/assign:
+    post:
+      summary: Assigns a user to a group
+      description: |
+        Assigns a specific user to a group that is identifier by the group ID.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+      requestBody:
+        $ref: "#/components/requestBodies/AssignUserReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Member assigned.
+        "400":
+          description: Failed due to malformed group's ID.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /groups/{groupID}/users/unassign:
+    post:
+      summary: Unassigns a user to a group
+      description: |
+        Unassigns a specific user to a group that is identifier by the group ID.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/GroupID"
+      requestBody:
+        $ref: "#/components/requestBodies/AssignUserReq"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Member assigned.
+        "400":
+          description: Failed due to malformed group's ID.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /channels/{memberID}/groups:
+    get:
+      summary: Get group associated with the member
+      description: |
+        Gets groups associated with the channel member specified by id.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/MemberID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/Tags"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
+  /users/{memberID}/groups:
+    get:
+      summary: Get group associated with the member
+      description: |
+        Gets groups associated with the user member specified by id.
+      tags:
+        - Groups
+      parameters:
+        - $ref: "#/components/parameters/MemberID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Metadata"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/Tags"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/GroupPageRes"
+        "400":
+          description: Failed due to malformed query parameters.
+        "401":
+          description: Missing or invalid access token provided.
+        "404":
+          description: Group does not exist.
+        "500":
+          $ref: "#/components/responses/ServiceError"
+
   /health:
     get:
       summary: Retrieves service health check info.
       tags:
         - health
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/HealthRes"
-        '500':
+        "500":
           $ref: "#/components/responses/ServiceError"
 
 components:
   schemas:
-    Token:
-      type: object
-      properties:
-        token:
-          type: string
-          format: jwt
-          description: Generated access token.
-      required:
-        - token
     UserReqObj:
       type: object
       properties:
-        email:
+        name:
           type: string
-          format: email
-          example: "test@example.com"
-          description: User's email address will be used as its unique identifier
-        password:
+          example: userName
+          description: User name.
+        tags:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          example: ["tag1", "tag2"]
+          description: User tags.
+        credentials:
+          type: object
+          properties:
+            identity:
+              type: string
+              example: "admin@example.com"
+              description: User's identity for example email address will be used as its unique identifier
+            secret:
+              type: string
+              format: password
+              example: password
+              minimum: 8
+              description: Free-form account secret used for acquiring auth token(s).
+        owner:
           type: string
-          format: password
-          minimum: 8
-          description: Free-form account password used for acquiring auth token(s).
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: User owner must be exsiting in the databse.
+        metadata:
+          type: object
+          example: { "domain": "example.com" }
+          description: Arbitrary, object-encoded user's data.
+        status:
+          type: string
+          description: User Status
+          format: string
+          example: enabled
       required:
-        - email
-        - password
+        - credentials
+
+    GroupReqObj:
+      type: object
+      properties:
+        name:
+          type: string
+          example: groupName
+          description: Free-form group name. Group name is unique on the given hierarchy level.
+        description:
+          type: string
+          example: long group description
+          description: Group description, free form text.
+        parent_id:
+          type: string
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Id of parent group, it must be existing group.
+        metadata:
+          type: object
+          example: { "domain": "example.com" }
+          description: Arbitrary, object-encoded groups's data.
+        status:
+          type: string
+          description: Group Status
+          format: string
+          example: enabled
+        owner_id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Group owner ID must be exsiting in the databse.
+      required:
+        - name
+
     User:
       type: object
       properties:
         id:
           type: string
           format: uuid
-          example: 18167738-f7a8-4e96-a123-58c3cd14de3a
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
           description: User unique identifier.
-        email:
+        name:
           type: string
-          format: email
-          example: "test@example.com"
-          description: User's email address will be used as its unique identifier.
+          example: userName
+          description: User name.
+        tags:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          example: ["tag1", "tag2"]
+          description: User tags.
+        owner:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: User owner identifier.
+        credentials:
+          type: object
+          properties:
+            identity:
+              type: string
+              example: admin@mainflux.com
+              description: User Identity for example email address.
         metadata:
           type: object
+          example: { "domain": "example.com" }
           description: Arbitrary, object-encoded user's data.
+        status:
+          type: string
+          description: User Status
+          format: string
+          example: enabled
+        created_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Time when the group was created.
+        updated_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Time when the group was created.
+      xml:
+        name: user
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Unique group identifier generated by the service.
+        name:
+          type: string
+          example: groupName
+          description: Free-form group name. Group name is unique on the given hierarchy level.
+        owner_id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Group owner identifier of user that created the group..
+        parent_id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Group parent identifier.
+        description:
+          type: string
+          example: long group description
+          description: Group description, free form text.
+        metadata:
+          type: object
+          example: { "role": "general" }
+          description: Arbitrary, object-encoded groups's data.
+        path:
+          type: string
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879.bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Hierarchy path, concatenated ids of group ancestors.
+        level:
+          type: integer
+          description: Level in hierarchy, distance from the root group.
+          format: int32
+          example: 2
+          maximum: 5
+        created_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Datetime when the group was created.
+        updated_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Datetime when the group was created.
+        status:
+          type: string
+          description: Group Status
+          format: string
+          example: enabled
+      xml:
+        name: group
+
+    Memberships:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Unique group identifier generated by the service.
+        name:
+          type: string
+          example: groupName
+          description: Free-form group name. Group name is unique on the given hierarchy level.
+        owner_id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Group owner identifier of user that created the group..
+        parent_id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Group parent identifier.
+        description:
+          type: string
+          example: long group description
+          description: Group description, free form text.
+        metadata:
+          type: object
+          example: { "role": "general" }
+          description: Arbitrary, object-encoded groups's data.
+        path:
+          type: string
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879.bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Hierarchy path, concatenated ids of group ancestors.
+        level:
+          type: integer
+          description: Level in hierarchy, distance from the root group.
+          format: int32
+          example: 2
+        created_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Datetime when the group was created.
+        updated_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Datetime when the group was created.
+      xml:
+        name: memberships
+
+    Members:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: User unique identifier.
+        name:
+          type: string
+          example: userName
+          description: User name.
+        tags:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          example: ["computations", "datasets"]
+          description: User tags.
+        owner:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: User owner identifier.
+        credentials:
+          type: object
+          properties:
+            identity:
+              type: string
+              example: user@mainflux.com
+              description: User Identity for example email address.
+            secret:
+              type: string
+              example: password
+              description: User secret password.
+        metadata:
+          type: object
+          example: { "role": "general" }
+          description: Arbitrary, object-encoded user's data.
+        status:
+          type: string
+          description: User Status
+          format: string
+          example: enabled
+        created_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Time when the group was created.
+        updated_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Time when the group was created.
+      xml:
+        name: members
+
     UsersPage:
       type: object
       properties:
-        things:
+        users:
           type: array
           minItems: 0
           uniqueItems: true
@@ -321,36 +1120,468 @@ components:
             $ref: "#/components/schemas/User"
         total:
           type: integer
+          example: 1
           description: Total number of items.
         offset:
           type: integer
           description: Number of items to skip during retrieval.
         limit:
           type: integer
+          example: 10
           description: Maximum number of items to return in one page.
       required:
-        - things
-    UserMetadata:
+        - users
+        - total
+        - offset
+
+    GroupsPage:
       type: object
       properties:
+        groups:
+          type: array
+          minItems: 0
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Group"
+        total:
+          type: integer
+          example: 1
+          description: Total number of items.
+        offset:
+          type: integer
+          description: Number of items to skip during retrieval.
+        limit:
+          type: integer
+          example: 10
+          description: Maximum number of items to return in one page.
+      required:
+        - groups
+        - total
+        - level
+
+    MembershipsPage:
+      type: object
+      properties:
+        memberships:
+          type: array
+          minItems: 0
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Memberships"
+        total:
+          type: integer
+          example: 1
+          description: Total number of items.
+        offset:
+          type: integer
+          description: Number of items to skip during retrieval.
+        limit:
+          type: integer
+          example: 10
+          description: Maximum number of items to return in one page.
+      required:
+        - memberships
+        - total
+        - level
+
+    MembersPage:
+      type: object
+      properties:
+        members:
+          type: array
+          minItems: 0
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Members"
+        total:
+          type: integer
+          example: 1
+          description: Total number of items.
+        offset:
+          type: integer
+          description: Number of items to skip during retrieval.
+        limit:
+          type: integer
+          example: 10
+          description: Maximum number of items to return in one page.
+      required:
+        - members
+        - total
+        - level
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: userName
+          description: User name.
         metadata:
           type: object
+          example: { "role": "general" }
           description: Arbitrary, object-encoded user's data.
+      required:
+        - name
+        - metadata
+
+    UserTags:
+      type: object
+      properties:
+        tags:
+          type: array
+          example: ["yello", "orange"]
+          description: User tags.
+          minItems: 0
+          uniqueItems: true
+          items:
+            type: string
+
+    UserIdentity:
+      type: object
+      properties:
+        identity:
+          type: string
+          example: user@mainflux.com
+          description: User Identity for example email address.
+      required:
+        - identity
+
+    UserSecret:
+      type: object
+      properties:
+        old_secret:
+          type: string
+          example: oldpassword
+          description: Old user secret password.
+        new_secret:
+          type: string
+          example: newpassword
+          description: New user secret password.
+      required:
+        - old_secret
+        - new_secret
+
+    UserOwner:
+      type: object
+      properties:
+        owner:
+          type: string
+          example: user@mainflux.com
+          description: User owner for example email address.
+      required:
+        - owner
+
+    GroupUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: groupName
+          description: Free-form group name. Group name is unique on the given hierarchy level.
+        description:
+          type: string
+          example: long description but not too long
+          description: Group description, free form text.
+        metadata:
+          type: object
+          example: { "role": "general" }
+          description: Arbitrary, object-encoded groups's data.
+      required:
+        - name
+        - metadata
+        - description
+
+    AssignReqObj:
+      type: object
+      properties:
+        members:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          description: Members IDs
+          example:
+            [
+              "bb7edb32-2eac-4aad-aebe-ed96fe073879",
+              "bb7edb32-2eac-4aad-aebe-ed96fe073879",
+            ]
+        relation:
+          type: string
+          example: "m_write"
+          description: Permission relations.
+        member_kind:
+          type: string
+          example: "user"
+          description: Member kind.
+      required:
+        - members
+        - relation
+        - member_kind
+
+    AssignUserReqObj:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          description: User IDs
+          example:
+            [
+              "bb7edb32-2eac-4aad-aebe-ed96fe073879",
+              "bb7edb32-2eac-4aad-aebe-ed96fe073879",
+            ]
+        relation:
+          type: string
+          example: "m_write"
+          description: Permission relations.
+      required:
+        - user_ids
+        - relation
+
+    IssueToken:
+      type: object
+      properties:
+        identity:
+          type: string
+          example: user@mainflux.com
+          description: User Identity for example email address.
+        secret:
+          type: string
+          example: password
+          description: User secret password.
+      required:
+        - identity
+        - secret
+
     Error:
       type: object
       properties:
         error:
           type: string
           description: Error message
+      example: { "error": "malformed entity specification" }
+
+    HealthRes:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Service status.
+          enum:
+            - pass
+        version:
+          type: string
+          description: Service version.
+          example: 0.0.1
+        commit:
+          type: string
+          description: Service commit hash.
+          example: 7d6f4dc4f7f0c1fa3dc24eddfb18bb5073ff4f62
+        description:
+          type: string
+          description: Service description.
+          example: <service_name> service
+        build_time:
+          type: string
+          description: Service build time.
+          example: 1970-01-01_00:00:00
 
   parameters:
-    Referer:
-      name: Referer
+    Referrer:
+      name: Referrer
       description: Host being sent by browser.
       in: header
       schema:
         type: string
       required: true
+
+    UserID:
+      name: userID
+      description: Unique user identifier.
+      in: path
+      schema:
+        type: string
+        format: uuid
+      required: true
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    Visibility:
+      name: visibility
+      description: The visibility specifier when listing users. Either all, shared or mine.
+      in: path
+      schema:
+        type: string
+      required: true
+      example: all
+
+    UserName:
+      name: name
+      description: User's name.
+      in: query
+      schema:
+        type: string
+      required: false
+      example: "userName"
+
+    UserIdentity:
+      name: identity
+      description: User's identity.
+      in: query
+      schema:
+        type: string
+      required: false
+      example: "admin@example.com"
+
+    Owner:
+      name: owner_id
+      description: User's owner.
+      in: query
+      schema:
+        type: string
+        format: uuid
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    UserOwner:
+      name: owner
+      description: Unique owner identifier for a user.
+      in: query
+      schema:
+        type: string
+        format: uuid
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    UserVisibility:
+      name: visibility
+      description: visibility to list either users I own or users that are shared with me or both users I own and shared with me
+      in: query
+      schema:
+        type: string
+      required: false
+      example: shared
+
+    Status:
+      name: status
+      description: User account status.
+      in: query
+      schema:
+        type: string
+        default: enabled
+      required: false
+      example: enabled
+
+    Tags:
+      name: tags
+      description: User tags.
+      in: query
+      schema:
+        type: array
+        minItems: 0
+        uniqueItems: true
+        items:
+          type: string
+      required: false
+      example: ["yello", "orange"]
+
+    GroupName:
+      name: name
+      description: Group's name.
+      in: query
+      schema:
+        type: string
+      required: false
+      example: "groupName"
+
+    ChannelName:
+      name: name
+      description: Channel's name.
+      in: query
+      schema:
+        type: string
+      required: false
+      example: "channelName"
+
+    GroupDescription:
+      name: name
+      description: Group's description.
+      in: query
+      schema:
+        type: string
+      required: false
+      example: "group description"
+
+    GroupID:
+      name: groupID
+      description: Unique group identifier.
+      in: path
+      schema:
+        type: string
+        format: uuid
+      required: true
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    ChannelID:
+      name: channelID
+      description: Unique group identifier.
+      in: path
+      schema:
+        type: string
+        format: uuid
+      required: true
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    MemberID:
+      name: memberID
+      description: Unique member identifier.
+      in: path
+      schema:
+        type: string
+        format: uuid
+      required: true
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    ParentID:
+      name: parentID
+      description: Unique parent identifier for a group.
+      in: query
+      schema:
+        type: string
+        format: uuid
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    Level:
+      name: level
+      description: Level of hierarchy up to which to retrieve groups from given group id.
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 5
+      required: false
+
+    Tree:
+      name: tree
+      description: Specify type of response, JSON array or tree.
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+
+    OwnerID:
+      name: ownerID
+      description: Unique owner identifier for a group.
+      in: query
+      schema:
+        type: string
+        format: uuid
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
     Metadata:
       name: metadata
       description: Metadata filter. Filtering is performed matching the parameter with metadata on top level. Parameter is json.
@@ -359,22 +1590,7 @@ components:
         type: string
         minimum: 0
       required: false
-    UserId:
-      name: userId
-      description: Unique user identifier.
-      in: path
-      schema:
-        type: string
-        format: uuid
-      required: true
-    GroupId:
-      name: groupId
-      description: Unique group identifier.
-      in: path
-      schema:
-        type: string
-        format: ulid
-      required: true
+
     Limit:
       name: limit
       description: Size of the subset to retrieve.
@@ -385,6 +1601,8 @@ components:
         maximum: 100
         minimum: 1
       required: false
+      example: "100"
+
     Offset:
       name: offset
       description: Number of items to skip during retrieval.
@@ -394,14 +1612,8 @@ components:
         default: 0
         minimum: 0
       required: false
-    Status:
-      name: status
-      description: User account status.
-      in: query
-      schema:
-        type: string
-        default: enabled
-      required: false
+      example: "0"
+
   requestBodies:
     UserCreateReq:
       description: JSON-formatted document describing the new user to be registered
@@ -409,14 +1621,88 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/UserReqObj'
+            $ref: "#/components/schemas/UserReqObj"
+
     UserUpdateReq:
-      description: JSON-formated document describing the metadata of user to be update
+      description: JSON-formated document describing the metadata and name of user to be update
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/UserMetadata"
+            $ref: "#/components/schemas/UserUpdate"
+
+    UserUpdateTagsReq:
+      description: JSON-formated document describing the tags of user to be update
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UserTags"
+
+    UserUpdateIdentityReq:
+      description: Identity change data. User can change its identity.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UserIdentity"
+
+    UserUpdateSecretReq:
+      description: Secret change data. User can change its secret.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UserSecret"
+
+    UserUpdateOwnerReq:
+      description: JSON-formated document describing the owner of user to be update
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UserOwner"
+
+    GroupCreateReq:
+      description: JSON-formatted document describing the new group to be registered
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GroupReqObj"
+
+    GroupUpdateReq:
+      description: JSON-formated document describing the metadata and name of group to be update
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GroupUpdate"
+
+    AssignReq:
+      description: JSON-formated document describing the policy related to assigning members to a group
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AssignReqObj"
+
+    AssignUserReq:
+      description: JSON-formated document describing the policy related to assigning users to a group
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AssignUserReqObj"
+
+    IssueTokenReq:
+      description: Login credentials.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IssueToken"
+
     RequestPasswordReset:
       description: Initiate password request procedure.
       required: true
@@ -429,6 +1715,7 @@ components:
                 type: string
                 format: email
                 description: User email.
+
     PasswordReset:
       description: Password reset request data, new password and token that is appended on password reset link received in email.
       content:
@@ -450,6 +1737,7 @@ components:
                 type: string
                 format: jwt
                 description: Reset token generated and sent in email.
+
     PasswordChange:
       description: Password change data. User can change its password.
       required: true
@@ -472,33 +1760,103 @@ components:
       description: Registered new user.
       headers:
         Location:
-          content:
-            text/plain:
-              schema:
-                type: string
-                format: url
-                description: Registered user relative URL.
-                example: /users/{userId}
+          schema:
+            type: string
+            format: url
+          description: Registered user relative URL in the format `/users/<user_id>`
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/User"
+
     UserRes:
       description: Data retrieved.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/User"
-    UsersPageRes:
+
+    UserPageRes:
       description: Data retrieved.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/UsersPage"
-    ServiceError:
-      description: Unexpected server-side error occurred.
-    HealthRes:
-      description: Service Health Check.
+
+    MembershipsPageRes:
+      description: Memberships associated with the user.
       content:
         application/json:
           schema:
-            $ref: "./schemas/HealthInfo.yml"
+            $ref: "#/components/schemas/MembershipsPage"
+
+    GroupCreateRes:
+      description: Registered new group.
+      headers:
+        Location:
+          schema:
+            type: string
+            format: url
+          description: Registered group relative URL in the format `/groups/<group_id>`
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Group"
+
+    GroupRes:
+      description: Data retrieved.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Group"
+
+    GroupPageRes:
+      description: Data retrieved.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GroupsPage"
+
+    MembersPageRes:
+      description: Group members retrieved.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MembersPage"
+
+    TokenRes:
+      description: JSON-formated document describing the user access token used for authenticating into the syetem and refresh token used for generating another access token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              access_token:
+                type: string
+                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NjU3OTMwNjksImlhdCI6MTY2NTc1NzA2OSwiaXNzIjoibWFpbmZsdXguYXV0aCIsInN1YiI6ImFkbWluQGV4YW1wbGUuY29tIiwiaXNzdWVyX2lkIjoiZmRjZWVhNWYtNjYxNy00MjY1LWJhZDUtMzYxOTNhOTQ0NjMwIiwidHlwZSI6MH0.3gNd_x01QEiZfQxuQoEyqCqTrcxRkXHO7A4iG_gzu3c
+                description: User access token.
+              refresh_token:
+                type: string
+                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NjU3OTMwNjksImlhdCI6MTY2NTc1NzA2OSwiaXNzIjoibWFpbmZsdXguYXV0aCIsInN1YiI6ImFkbWluQGV4YW1wbGUuY29tIiwiaXNzdWVyX2lkIjoiZmRjZWVhNWYtNjYxNy00MjY1LWJhZDUtMzYxOTNhOTQ0NjMwIiwidHlwZSI6MH0.3gNd_x01QEiZfQxuQoEyqCqTrcxRkXHO7A4iG_gzu3c
+                description: User refresh token.
+              access_type:
+                type: string
+                example: access
+                description: User access token type.
+
+    HealthRes:
+      description: Service Health Check.
+      content:
+        application/health+json:
+          schema:
+            $ref: "#/components/schemas/HealthRes"
+
+    ServiceError:
+      description: Unexpected server-side error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 
   securitySchemes:
     bearerAuth:
@@ -506,7 +1864,14 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        * Users access: "Authorization: Bearer <user_token>"
+        * User access: "Authorization: Bearer <user_access_token>"
 
+    refreshAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        * User refresh token used to get another access token: "Authorization: Bearer <user_refresh_token>"
 security:
   - bearerAuth: []
+  - refreshAuth: []
