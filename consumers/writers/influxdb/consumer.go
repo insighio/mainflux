@@ -5,6 +5,7 @@ package influxdb
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/mainflux/mainflux/consumers"
@@ -15,7 +16,7 @@ import (
 	influxdata "github.com/influxdata/influxdb/client/v2"
 )
 
-const senmlPoints = "messages"
+const senmlPoints = "chan_"
 
 var errSaveMessage = errors.New("failed to save message to influxdb database")
 
@@ -68,8 +69,12 @@ func (repo *influxRepo) senmlPoints(pts influxdata.BatchPoints, messages interfa
 
 		sec, dec := math.Modf(msg.Time)
 		t := time.Unix(int64(sec), int64(dec*(1e9)))
+		if sec == 0 && dec == 0 {
+			t = time.Now()
+		}
+		var customSenmlPoint = strings.Replace(senmlPoints+msg.Channel, "-", "_", -1)
 
-		pt, err := influxdata.NewPoint(senmlPoints, tgs, flds, t)
+		pt, err := influxdata.NewPoint(customSenmlPoint, tgs, flds, t)
 		if err != nil {
 			return nil, errors.Wrap(errSaveMessage, err)
 		}
