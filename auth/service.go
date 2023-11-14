@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	recoveryDuration = 5 * time.Minute
-	thingsGroupType  = "things"
+	recoveryDuration          = 5 * time.Minute
+	emailVerificationDuration = 48 * time.Hour
+	thingsGroupType           = "things"
 
 	authoritiesObject = "authorities"
 	memberRelation    = "member"
@@ -112,6 +113,8 @@ func (svc service) Issue(ctx context.Context, token string, key Key) (Key, strin
 		return svc.userKey(ctx, token, key)
 	case RecoveryKey:
 		return svc.tmpKey(recoveryDuration, key)
+	case EmailVerificationKey:
+		return svc.tmpKey(emailVerificationDuration, key)
 	default:
 		return svc.tmpKey(svc.loginDuration, key)
 	}
@@ -148,7 +151,7 @@ func (svc service) Identify(ctx context.Context, token string) (Identity, error)
 	}
 
 	switch key.Type {
-	case RecoveryKey, LoginKey:
+	case RecoveryKey, LoginKey, EmailVerificationKey:
 		return Identity{ID: key.IssuerID, Email: key.Subject}, nil
 	case APIKey:
 		_, err := svc.keys.Retrieve(context.TODO(), key.IssuerID, key.ID)

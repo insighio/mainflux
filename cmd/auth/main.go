@@ -89,6 +89,7 @@ type config struct {
 	serverKey     string
 	jaegerURL     string
 	resetURL      string
+	verifyURL     string
 	ketoReadHost  string
 	ketoWriteHost string
 	ketoWritePort string

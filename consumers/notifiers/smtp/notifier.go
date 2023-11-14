@@ -36,5 +36,8 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 	values := string(msg.Payload)
 	content := fmt.Sprintf(contentTemplate, msg.Publisher, msg.Protocol, values)
 
-	return n.agent.Send(to, from, subject, "", content, footer)
+	// Need to test this. We are not using the SMTP notifier functionality yet.
+	// If we do, we have to provide a template and use that template.
+	// For now, as a workaround use the existing email.tmpl
+	return n.agent.Send(to, from, subject, "", content, footer, "email.tmpl")
 }

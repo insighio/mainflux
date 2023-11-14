@@ -123,6 +123,32 @@ func (req passwChangeReq) validate() error {
 	return nil
 }
 
+type emailVerificationReq struct {
+	Email string `json:"email"`
+	Host  string `json:"host"`
+}
+
+func (req emailVerificationReq) validate() error {
+	if req.Email == "" {
+		return apiutil.ErrMissingEmail
+	}
+	if req.Host == "" {
+		return apiutil.ErrMissingHost
+	}
+	return nil
+}
+
+type emailVerificationTokenReq struct {
+	Token string `json:"token"`
+}
+
+func (req emailVerificationTokenReq) validate() error {
+	if req.Token == "" {
+		return users.ErrMissingVerificationToken
+	}
+	return nil
+}
+
 type listMemberGroupReq struct {
 	token    string
 	offset   uint64

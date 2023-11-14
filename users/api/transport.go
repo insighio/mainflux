@@ -32,6 +32,9 @@ const (
 	defLimit    = 10
 )
 
+// ErrFailedDecode indicates failed to decode request body
+var ErrFailedDecode = errors.New("failed to decode request body")
+
 // MakeHandler returns a HTTP handler for API endpoints.
 func MakeHandler(svc users.Service, tracer opentracing.Tracer, logger logger.Logger) http.Handler {
 	opts := []kithttp.ServerOption{
@@ -43,6 +46,20 @@ func MakeHandler(svc users.Service, tracer opentracing.Tracer, logger logger.Log
 	mux.Post("/users", kithttp.NewServer(
 		kitot.TraceServer(tracer, "register")(registrationEndpoint(svc)),
 		decodeCreateUserReq,
+		encodeResponse,
+		opts...,
+	))
+
+	mux.Post("/users/verify-request", kithttp.NewServer(
+		kitot.TraceServer(tracer, "ver-req")(emailVerificationRequestEndpoint(svc)),
+		decodeEmailVerificationRequest,
+		encodeResponse,
+		opts...,
+	))
+
+	mux.Post("/users/verify", kithttp.NewServer(
+		kitot.TraceServer(tracer, "verify")(emailVerificationEndpoint(svc)),
+		decodeEmailVerification,
 		encodeResponse,
 		opts...,
 	))
@@ -266,6 +283,34 @@ func decodeListMembersRequest(_ context.Context, r *http.Request) (interface{}, 
 		limit:    l,
 		metadata: m,
 	}
+	return req, nil
+}
+
+func decodeEmailVerificationRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errors.ErrUnsupportedContentType
+	}
+
+	var req emailVerificationReq
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(ErrFailedDecode, err)
+	}
+
+	req.Host = r.Header.Get("Referer")
+	return req, nil
+}
+
+func decodeEmailVerification(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errors.ErrUnsupportedContentType
+	}
+
+	var req emailVerificationTokenReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(ErrFailedDecode, err)
+	}
+
 	return req, nil
 }
 
