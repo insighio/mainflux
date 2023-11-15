@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/insighio/senml"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/twins"
 	"github.com/mainflux/mainflux/twins/mocks"
-	"github.com/mainflux/senml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

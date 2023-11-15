@@ -14,8 +14,8 @@ import (
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
 
+	"github.com/insighio/senml"
 	"github.com/mainflux/mainflux"
-	"github.com/mainflux/senml"
 )
 
 const publisher = "twins"

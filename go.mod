@@ -20,10 +20,10 @@ require (
 	github.com/hashicorp/vault/api v1.3.1
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/influxdata/influxdb v1.9.6
+	github.com/insighio/senml v1.2.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/lib/pq v1.10.4
 	github.com/mainflux/mproxy v0.2.2
-	github.com/mainflux/senml v1.5.0
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/nats-io/nats.go v1.13.0
 	github.com/oklog/ulid/v2 v2.0.2
