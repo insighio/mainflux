@@ -166,7 +166,13 @@ func (svc service) Identify(ctx context.Context, token string) (Identity, error)
 	}
 
 	switch key.Type {
-	case APIKey, RecoveryKey, UserKey, EmailVerificationKey:
+	case RecoveryKey, UserKey, EmailVerificationKey:
+		return Identity{ID: key.IssuerID, Email: key.Subject}, nil
+	case APIKey:
+		_, err := svc.keys.Retrieve(context.TODO(), key.IssuerID, key.ID)
+		if err != nil {
+			return Identity{}, ErrUnauthorizedAccess
+		}
 		return Identity{ID: key.IssuerID, Email: key.Subject}, nil
 	default:
 		return Identity{}, ErrUnauthorizedAccess
