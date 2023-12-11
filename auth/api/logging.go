@@ -77,7 +77,7 @@ func (lm *loggingMiddleware) Identify(ctx context.Context, key string) (id auth.
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
 		}
-		lm.logger.Info(fmt.Sprintf("%s without errors. key %s, id %s, email %s", message, key, id.ID, id.Email))
+		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
 	return lm.svc.Identify(ctx, key)
