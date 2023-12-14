@@ -28,7 +28,7 @@ const (
 	typeKey     = "type"
 	defOffset   = 0
 	defLimit    = 10
-	defType     = 2
+	defType     = 3
 )
 
 var errUnsupportedContentType = errors.New("unsupported content type")
