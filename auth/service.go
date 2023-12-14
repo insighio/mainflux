@@ -50,6 +50,26 @@ var (
 	// ErrFailedToRetrieveChildren failed to retrieve groups.
 	ErrFailedToRetrieveChildren = errors.New("failed to retrieve all groups")
 
+	// These error codes are taken from the master branch located under
+	// the ./internal/apiutil/errors.go file, which is not present here
+	// ErrBearerToken indicates missing or invalid bearer user token.
+	ErrBearerToken = errors.New("missing or invalid bearer user token")
+
+	// ErrBearerKey indicates missing or invalid bearer entity key.
+	ErrBearerKey = errors.New("missing or invalid bearer entity key")
+
+	// ErrLimitSize limit value is invalid.
+	ErrLimitSize = errors.New("invalid limit value")
+
+	// ErrMissingID indicates missing entity ID.
+	ErrMissingID = errors.New("missing entity id")
+
+	// ErrOffsetSize indicates an invalid offset.
+	ErrOffsetSize = errors.New("invalid offset size")
+
+	// ErrInvalidIDFormat indicates an invalid ID format.
+	ErrInvalidIDFormat = errors.New("invalid id format provided")
+
 	errIssueUser = errors.New("failed to issue new user key")
 	errIssueTmp  = errors.New("failed to issue new temporary key")
 	errRevoke    = errors.New("failed to remove key")
@@ -72,6 +92,10 @@ type Authn interface {
 	// Retrieve retrieves data for the Key identified by the provided
 	// ID, that is issued by the user identified by the provided key.
 	RetrieveKey(ctx context.Context, token, id string) (Key, error)
+
+	// RetrieveKeys retrieves data for the Keys that are
+	// issued by the user identified by the provided key.
+	RetrieveKeys(ctx context.Context, token string, pm PageMetadata) (KeyPage, error)
 
 	// Identify validates token token. If token is valid, content
 	// is returned. If token is invalid, or invocation failed for some
@@ -152,7 +176,16 @@ func (svc service) RetrieveKey(ctx context.Context, token, id string) (Key, erro
 		return Key{}, errors.Wrap(errRetrieve, err)
 	}
 
-	return svc.keys.Retrieve(ctx, issuerID, id)
+	return svc.keys.RetrieveByID(ctx, issuerID, id)
+}
+
+func (svc service) RetrieveKeys(ctx context.Context, token string, pm PageMetadata) (KeyPage, error) {
+	issuerID, _, err := svc.login(token)
+	if err != nil {
+		return KeyPage{}, errors.Wrap(errRetrieve, err)
+	}
+
+	return svc.keys.RetrieveAll(ctx, issuerID, pm)
 }
 
 func (svc service) Identify(ctx context.Context, token string) (Identity, error) {
@@ -169,7 +202,7 @@ func (svc service) Identify(ctx context.Context, token string) (Identity, error)
 	case RecoveryKey, UserKey, EmailVerificationKey:
 		return Identity{ID: key.IssuerID, Email: key.Subject}, nil
 	case APIKey:
-		_, err := svc.keys.Retrieve(context.TODO(), key.IssuerID, key.ID)
+		_, err := svc.keys.RetrieveByID(context.TODO(), key.IssuerID, key.ID)
 		if err != nil {
 			return Identity{}, ErrUnauthorizedAccess
 		}

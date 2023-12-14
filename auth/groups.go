@@ -92,7 +92,8 @@ type PageMetadata struct {
 	Size     uint64
 	Level    uint64
 	Name     string
-	Type     string
+	Type     uint32
+	Subject  string
 	Metadata GroupMetadata
 }
 

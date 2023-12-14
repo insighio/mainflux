@@ -37,3 +37,23 @@ func (req keyReq) validate() error {
 	}
 	return nil
 }
+
+type listKeysReq struct {
+	token   string
+	subject string
+	keyType uint32
+	offset  uint64
+	limit   uint64
+}
+
+func (req listKeysReq) validate() error {
+	if req.token == "" {
+		return auth.ErrBearerToken
+	}
+
+	if req.limit < 1 {
+		return auth.ErrLimitSize
+	}
+
+	return nil
+}
