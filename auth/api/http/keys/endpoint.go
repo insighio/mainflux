@@ -104,12 +104,14 @@ func retrieveKeysEndpoint(svc auth.Service) endpoint.Endpoint {
 
 		for _, key := range kp.Keys {
 			view := retrieveKeyRes{
-				ID:        key.ID,
-				IssuerID:  key.IssuerID,
-				Subject:   key.Subject,
-				Type:      key.Type,
-				IssuedAt:  key.IssuedAt,
-				ExpiresAt: &key.ExpiresAt,
+				ID:       key.ID,
+				IssuerID: key.IssuerID,
+				Subject:  key.Subject,
+				Type:     key.Type,
+				IssuedAt: key.IssuedAt,
+			}
+			if !key.ExpiresAt.IsZero() {
+				view.ExpiresAt = &key.ExpiresAt
 			}
 			res.Keys = append(res.Keys, view)
 		}
