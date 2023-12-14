@@ -15,11 +15,21 @@ import (
 	"github.com/go-zoo/bone"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/auth"
+	"github.com/mainflux/mainflux/internal/httputil"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/opentracing/opentracing-go"
 )
 
-const contentType = "application/json"
+const (
+	contentType = "application/json"
+	offsetKey   = "offset"
+	limitKey    = "limit"
+	subjectKey  = "subject"
+	typeKey     = "type"
+	defOffset   = 0
+	defLimit    = 10
+	defType     = 2
+)
 
 var errUnsupportedContentType = errors.New("unsupported content type")
 
@@ -30,6 +40,13 @@ func MakeHandler(svc auth.Service, mux *bone.Mux, tracer opentracing.Tracer) *bo
 	mux.Post("/keys", kithttp.NewServer(
 		kitot.TraceServer(tracer, "issue")(issueEndpoint(svc)),
 		decodeIssue,
+		encodeResponse,
+		opts...,
+	))
+
+	mux.Get("/keys", kithttp.NewServer(
+		kitot.TraceServer(tracer, "issue")(retrieveKeysEndpoint(svc)),
+		decodeListKeysRequest,
 		encodeResponse,
 		opts...,
 	))
@@ -73,6 +90,37 @@ func decodeKeyReq(_ context.Context, r *http.Request) (interface{}, error) {
 	return req, nil
 }
 
+func decodeListKeysRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	s, err := httputil.ReadStringQuery(r, subjectKey, "")
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := httputil.ReadUintQuery(r, typeKey, defType)
+	if err != nil {
+		return nil, err
+	}
+
+	o, err := httputil.ReadUintQuery(r, offsetKey, defOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	l, err := httputil.ReadUintQuery(r, limitKey, defLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	req := listKeysReq{
+		token:   httputil.ExtractBearerToken(r),
+		subject: s,
+		keyType: uint32(t),
+		offset:  o,
+		limit:   l,
+	}
+	return req, nil
+}
+
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("Content-Type", contentType)
 
@@ -99,6 +147,14 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		w.WriteHeader(http.StatusForbidden)
 	case errors.Contains(err, auth.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
+	case errors.Contains(err, errors.ErrInvalidQueryParams),
+		errors.Contains(err, errors.ErrMalformedEntity),
+		err == auth.ErrMissingID,
+		err == auth.ErrBearerKey,
+		err == auth.ErrLimitSize,
+		err == auth.ErrOffsetSize,
+		err == auth.ErrInvalidIDFormat:
+		w.WriteHeader(http.StatusBadRequest)
 	case errors.Contains(err, auth.ErrConflict):
 		w.WriteHeader(http.StatusConflict)
 	case errors.Contains(err, io.EOF):
