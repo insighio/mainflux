@@ -109,6 +109,17 @@ func migrateDB(db *sqlx.DB) error {
 					`DROP TRIGGER IF EXISTS inherit_group_tr ON groups`,
 				},
 			},
+			{
+				Id: "auth_2_insighio",
+				Up: []string{
+					`ALTER TABLE keys 
+					 ADD COLUMN name VARCHAR(254) NOT NULL DEFAULT 'API key'`,
+					`ALTER TABLE keys ALTER COLUMN name DROP DEFAULT`,
+				},
+				Down: []string{
+					`ALTER TABLE keys DROP COLUMN name`,
+				},
+			},
 		},
 	}
 

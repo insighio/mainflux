@@ -35,6 +35,7 @@ const (
 // Key represents API key.
 type Key struct {
 	ID        string
+	Name      string
 	Type      uint32
 	IssuerID  string
 	Subject   string

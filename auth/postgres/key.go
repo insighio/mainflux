@@ -142,6 +142,7 @@ func (kr repo) Remove(ctx context.Context, issuerID, id string) error {
 
 type dbKey struct {
 	ID        string       `db:"id"`
+	Name      string       `db:"name"`
 	Type      uint32       `db:"type"`
 	IssuerID  string       `db:"issuer_id"`
 	Subject   string       `db:"subject"`
@@ -153,6 +154,7 @@ type dbKey struct {
 func toDBKey(key auth.Key) dbKey {
 	ret := dbKey{
 		ID:       key.ID,
+		Name:     key.Name,
 		Type:     key.Type,
 		IssuerID: key.IssuerID,
 		Subject:  key.Subject,
@@ -168,6 +170,7 @@ func toDBKey(key auth.Key) dbKey {
 func toKey(key dbKey) auth.Key {
 	ret := auth.Key{
 		ID:       key.ID,
+		Name:     key.Name,
 		Type:     key.Type,
 		IssuerID: key.IssuerID,
 		Subject:  key.Subject,

@@ -22,6 +22,7 @@ func issueEndpoint(svc auth.Service) endpoint.Endpoint {
 		newKey := auth.Key{
 			IssuedAt: now,
 			Type:     req.Type,
+			Name:     req.Name,
 		}
 
 		duration := time.Duration(req.Duration * time.Second)
