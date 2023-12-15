@@ -63,6 +63,7 @@ func retrieveEndpoint(svc auth.Service) endpoint.Endpoint {
 		}
 		ret := retrieveKeyRes{
 			ID:       key.ID,
+			Name:     key.Name,
 			IssuerID: key.IssuerID,
 			Subject:  key.Subject,
 			Type:     key.Type,
@@ -106,6 +107,7 @@ func retrieveKeysEndpoint(svc auth.Service) endpoint.Endpoint {
 		for _, key := range kp.Keys {
 			view := retrieveKeyRes{
 				ID:       key.ID,
+				Name:     key.Name,
 				IssuerID: key.IssuerID,
 				Subject:  key.Subject,
 				Type:     key.Type,
