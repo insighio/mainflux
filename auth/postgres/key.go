@@ -57,7 +57,7 @@ func (kr repo) Save(ctx context.Context, key auth.Key) (string, error) {
 }
 
 func (kr repo) RetrieveByID(ctx context.Context, issuerID, id string) (auth.Key, error) {
-	q := `SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys WHERE issuer_id = $1 AND id = $2`
+	q := `SELECT id, name, type, issuer_id, subject, issued_at, expires_at FROM keys WHERE issuer_id = $1 AND id = $2`
 	key := dbKey{}
 	if err := kr.db.QueryRowxContext(ctx, q, issuerID, id).StructScan(&key); err != nil {
 		pqErr, ok := err.(*pq.Error)
@@ -85,7 +85,7 @@ func (kr repo) RetrieveAll(ctx context.Context, issuerID string, pm auth.PageMet
 		emq = fmt.Sprintf(" WHERE %s", strings.Join(query, " AND "))
 	}
 
-	q := fmt.Sprintf(`SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
+	q := fmt.Sprintf(`SELECT id, name, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
 	params := map[string]interface{}{
 		"limit":  pm.Limit,
 		"offset": pm.Offset,
