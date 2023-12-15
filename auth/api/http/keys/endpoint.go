@@ -111,7 +111,11 @@ func retrieveKeysEndpoint(svc auth.Service) endpoint.Endpoint {
 				IssuedAt: key.IssuedAt,
 			}
 			if !key.ExpiresAt.IsZero() {
-				view.ExpiresAt = &key.ExpiresAt
+				// The intermediate variable is needed because
+				// the key variable is reused in the loop and
+				// all values are the same in the key.expiresAt pointer
+				expiresAt := key.ExpiresAt
+				view.ExpiresAt = &expiresAt
 			}
 			res.Keys = append(res.Keys, view)
 		}
