@@ -38,6 +38,7 @@ func issueEndpoint(svc auth.Service) endpoint.Endpoint {
 
 		res := issueKeyRes{
 			ID:       key.ID,
+			Name:     key.Name,
 			Value:    secret,
 			IssuedAt: key.IssuedAt,
 		}

@@ -37,8 +37,8 @@ func New(db Database) auth.KeyRepository {
 }
 
 func (kr repo) Save(ctx context.Context, key auth.Key) (string, error) {
-	q := `INSERT INTO keys (id, type, issuer_id, subject, issued_at, expires_at)
-	      VALUES (:id, :type, :issuer_id, :subject, :issued_at, :expires_at)`
+	q := `INSERT INTO keys (id, name, type, issuer_id, subject, issued_at, expires_at)
+	      VALUES (:id, :name, :type, :issuer_id, :subject, :issued_at, :expires_at)`
 
 	dbKey := toDBKey(key)
 	if _, err := kr.db.NamedExecContext(ctx, q, dbKey); err != nil {
