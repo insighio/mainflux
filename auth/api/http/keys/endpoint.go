@@ -22,6 +22,7 @@ func issueEndpoint(svc auth.Service) endpoint.Endpoint {
 		newKey := auth.Key{
 			IssuedAt: now,
 			Type:     req.Type,
+			Name:     req.Name,
 		}
 
 		duration := time.Duration(req.Duration * time.Second)
@@ -37,6 +38,7 @@ func issueEndpoint(svc auth.Service) endpoint.Endpoint {
 
 		res := issueKeyRes{
 			ID:       key.ID,
+			Name:     key.Name,
 			Value:    secret,
 			IssuedAt: key.IssuedAt,
 		}
@@ -62,6 +64,7 @@ func retrieveEndpoint(svc auth.Service) endpoint.Endpoint {
 		}
 		ret := retrieveKeyRes{
 			ID:       key.ID,
+			Name:     key.Name,
 			IssuerID: key.IssuerID,
 			Subject:  key.Subject,
 			Type:     key.Type,
@@ -105,6 +108,7 @@ func retrieveKeysEndpoint(svc auth.Service) endpoint.Endpoint {
 		for _, key := range kp.Keys {
 			view := retrieveKeyRes{
 				ID:       key.ID,
+				Name:     key.Name,
 				IssuerID: key.IssuerID,
 				Subject:  key.Subject,
 				Type:     key.Type,

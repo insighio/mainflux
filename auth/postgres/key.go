@@ -37,8 +37,8 @@ func New(db Database) auth.KeyRepository {
 }
 
 func (kr repo) Save(ctx context.Context, key auth.Key) (string, error) {
-	q := `INSERT INTO keys (id, type, issuer_id, subject, issued_at, expires_at)
-	      VALUES (:id, :type, :issuer_id, :subject, :issued_at, :expires_at)`
+	q := `INSERT INTO keys (id, name, type, issuer_id, subject, issued_at, expires_at)
+	      VALUES (:id, :name, :type, :issuer_id, :subject, :issued_at, :expires_at)`
 
 	dbKey := toDBKey(key)
 	if _, err := kr.db.NamedExecContext(ctx, q, dbKey); err != nil {
@@ -57,7 +57,7 @@ func (kr repo) Save(ctx context.Context, key auth.Key) (string, error) {
 }
 
 func (kr repo) RetrieveByID(ctx context.Context, issuerID, id string) (auth.Key, error) {
-	q := `SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys WHERE issuer_id = $1 AND id = $2`
+	q := `SELECT id, name, type, issuer_id, subject, issued_at, expires_at FROM keys WHERE issuer_id = $1 AND id = $2`
 	key := dbKey{}
 	if err := kr.db.QueryRowxContext(ctx, q, issuerID, id).StructScan(&key); err != nil {
 		pqErr, ok := err.(*pq.Error)
@@ -85,7 +85,7 @@ func (kr repo) RetrieveAll(ctx context.Context, issuerID string, pm auth.PageMet
 		emq = fmt.Sprintf(" WHERE %s", strings.Join(query, " AND "))
 	}
 
-	q := fmt.Sprintf(`SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
+	q := fmt.Sprintf(`SELECT id, name, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
 	params := map[string]interface{}{
 		"limit":  pm.Limit,
 		"offset": pm.Offset,
@@ -142,6 +142,7 @@ func (kr repo) Remove(ctx context.Context, issuerID, id string) error {
 
 type dbKey struct {
 	ID        string       `db:"id"`
+	Name      string       `db:"name"`
 	Type      uint32       `db:"type"`
 	IssuerID  string       `db:"issuer_id"`
 	Subject   string       `db:"subject"`
@@ -153,6 +154,7 @@ type dbKey struct {
 func toDBKey(key auth.Key) dbKey {
 	ret := dbKey{
 		ID:       key.ID,
+		Name:     key.Name,
 		Type:     key.Type,
 		IssuerID: key.IssuerID,
 		Subject:  key.Subject,
@@ -168,6 +170,7 @@ func toDBKey(key auth.Key) dbKey {
 func toKey(key dbKey) auth.Key {
 	ret := auth.Key{
 		ID:       key.ID,
+		Name:     key.Name,
 		Type:     key.Type,
 		IssuerID: key.IssuerID,
 		Subject:  key.Subject,
