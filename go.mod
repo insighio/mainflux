@@ -8,7 +8,6 @@ require (
 	github.com/0x6flab/namegenerator v1.2.0
 	github.com/absmach/callhome v0.14.0
 	github.com/absmach/mproxy v0.4.2
-	github.com/absmach/senml v1.0.5
 	github.com/authzed/authzed-go v0.10.1
 	github.com/authzed/grpcutil v0.0.0-20230908193239-4286bb1d6403
 	github.com/caarlos0/env/v10 v10.0.0
@@ -28,6 +27,7 @@ require (
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
+	github.com/insighio/senml v1.2.0
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgtype v1.14.1

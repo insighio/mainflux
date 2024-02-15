@@ -15,7 +15,7 @@ import (
 	"github.com/absmach/magistrala/pkg/errors"
 	svcerr "github.com/absmach/magistrala/pkg/errors/service"
 	"github.com/absmach/magistrala/pkg/messaging"
-	"github.com/absmach/senml"
+	"github.com/insighio/senml"
 )
 
 const publisher = "twins"

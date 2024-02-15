@@ -7,7 +7,7 @@ import (
 	"github.com/absmach/magistrala/pkg/errors"
 	"github.com/absmach/magistrala/pkg/messaging"
 	"github.com/absmach/magistrala/pkg/transformers"
-	"github.com/absmach/senml"
+	"github.com/insighio/senml"
 )
 
 const (
