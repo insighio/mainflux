@@ -256,6 +256,23 @@ func (lm *loggingMiddleware) GenerateResetToken(ctx context.Context, email, host
 	return lm.svc.GenerateResetToken(ctx, email, host)
 }
 
+func (lm *loggingMiddleware) GenerateEmailVerificationToken(ctx context.Context, email, host string) (err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.String("host", host),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Generate email verification token failed to complete successfully", args...)
+			return
+		}
+		lm.logger.Info("Generate email verification token completed successfully", args...)
+	}(time.Now())
+
+	return lm.svc.GenerateEmailVerificationToken(ctx, email, host)
+}
+
 // ResetSecret logs the reset_secret request. It logs the time it took to complete the request.
 // If the request fails, it logs the error.
 func (lm *loggingMiddleware) ResetSecret(ctx context.Context, token, secret string) (err error) {
@@ -396,4 +413,20 @@ func (lm *loggingMiddleware) Identify(ctx context.Context, token string) (id str
 		lm.logger.Info("Identify user completed successfully", args...)
 	}(time.Now())
 	return lm.svc.Identify(ctx, token)
+}
+
+func (lm *loggingMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) (err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Verify email failed to complete successfully", args...)
+			return
+		}
+		lm.logger.Info("Verify email completed successfully", args...)
+	}(time.Now())
+
+	return lm.svc.VerifyEmail(ctx, emailVerificationToken)
 }

@@ -30,6 +30,7 @@ func (req issueReq) validate() error {
 	if req.keyType != auth.AccessKey &&
 		req.keyType != auth.APIKey &&
 		req.keyType != auth.RecoveryKey &&
+		req.keyType != auth.EmailVerificationKey &&
 		req.keyType != auth.InvitationKey {
 		return apiutil.ErrInvalidAuthKey
 	}

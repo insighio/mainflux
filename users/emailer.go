@@ -7,4 +7,7 @@ package users
 type Emailer interface {
 	// SendPasswordReset sends an email to the user with a link to reset the password.
 	SendPasswordReset(To []string, host, user, token string) error
+
+	// SendEmailVerification sends an email to the user with a link to verify the email.
+	SendEmailVerification(To []string, host, user, token string) error
 }

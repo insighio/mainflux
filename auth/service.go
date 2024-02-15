@@ -15,7 +15,10 @@ import (
 	svcerr "github.com/absmach/magistrala/pkg/errors/service"
 )
 
-const recoveryDuration = 5 * time.Minute
+const (
+	recoveryDuration          = 5 * time.Minute
+	emailVerificationDuration = 48 * time.Hour
+)
 
 var (
 	errRollbackPolicy     = errors.New("failed to rollback policy")
@@ -123,6 +126,8 @@ func (svc service) Issue(ctx context.Context, token string, key Key) (Token, err
 		return svc.refreshKey(ctx, token, key)
 	case RecoveryKey:
 		return svc.tmpKey(recoveryDuration, key)
+	case EmailVerificationKey:
+		return svc.tmpKey(emailVerificationDuration, key)
 	case InvitationKey:
 		return svc.invitationKey(ctx, key)
 	default:
@@ -165,7 +170,7 @@ func (svc service) Identify(ctx context.Context, token string) (Key, error) {
 	}
 
 	switch key.Type {
-	case RecoveryKey, AccessKey, InvitationKey:
+	case RecoveryKey, AccessKey, EmailVerificationKey, InvitationKey:
 		return key, nil
 	case APIKey:
 		_, err := svc.keys.Retrieve(ctx, key.Issuer, key.ID)

@@ -35,6 +35,9 @@ type Repository interface {
 	UpdateRole(ctx context.Context, client mgclients.Client) (mgclients.Client, error)
 
 	CheckSuperAdmin(ctx context.Context, adminID string) error
+
+	//Populates metadata with 'email verified' flag
+	VerifyEmail(ctx context.Context, email string) error
 }
 
 // NewRepository instantiates a PostgreSQL
@@ -199,4 +202,22 @@ func (repo clientRepo) UpdateRole(ctx context.Context, client mgclients.Client) 
 	}
 
 	return pgclients.ToClient(dbc)
+}
+
+func (repo clientRepo) VerifyEmail(ctx context.Context, identity string) error {
+	c, err := repo.RetrieveByIdentity(ctx, identity)
+	if err != nil {
+		return err
+	}
+
+	val, ok := c.Metadata["verified"]
+	if !ok || val == false {
+		//add verified tag in metadata and save user info back to the DB
+
+		c.Metadata["verified"] = true
+		_, err := repo.Update(ctx, c)
+		return err
+	}
+
+	return nil
 }

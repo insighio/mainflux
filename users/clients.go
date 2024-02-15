@@ -44,6 +44,10 @@ type Service interface {
 	// host is used for generating reset link.
 	GenerateResetToken(ctx context.Context, email, host string) error
 
+	// GenerateEmailVerificationToken email where mail will be sent.
+	// host is used for generating email verification link.
+	GenerateEmailVerificationToken(ctx context.Context, email, host string) error
+
 	// UpdateClientSecret updates the client's secret.
 	UpdateClientSecret(ctx context.Context, token, oldSecret, newSecret string) (clients.Client, error)
 
@@ -53,6 +57,9 @@ type Service interface {
 
 	// SendPasswordReset sends reset password link to email.
 	SendPasswordReset(ctx context.Context, host, email, user, token string) error
+
+	// Verify email of the corresponding user.
+	VerifyEmail(ctx context.Context, emailVerificationToken string) error
 
 	// UpdateClientRole updates the client's Role.
 	UpdateClientRole(ctx context.Context, token string, client clients.Client) (clients.Client, error)

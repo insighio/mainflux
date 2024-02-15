@@ -24,6 +24,8 @@ const (
 	clientListByGroup  = clientPrefix + "list_by_group"
 	clientIdentify     = clientPrefix + "identify"
 	generateResetToken = clientPrefix + "generate_reset_token"
+	generateVerifToken = clientPrefix + "generate_email_verification_token"
+	verifyEmail        = clientPrefix + "verify_email"
 	issueToken         = clientPrefix + "issue_token"
 	refreshToken       = clientPrefix + "refresh_token"
 	resetSecret        = clientPrefix + "reset_secret"
@@ -40,6 +42,8 @@ var (
 	_ events.Event = (*listClientByGroupEvent)(nil)
 	_ events.Event = (*identifyClientEvent)(nil)
 	_ events.Event = (*generateResetTokenEvent)(nil)
+	_ events.Event = (*generateEmailVerificationTokenEvent)(nil)
+	_ events.Event = (*verifyEmailEvent)(nil)
 	_ events.Event = (*issueTokenEvent)(nil)
 	_ events.Event = (*refreshTokenEvent)(nil)
 	_ events.Event = (*resetSecretEvent)(nil)
@@ -361,6 +365,27 @@ func (grte generateResetTokenEvent) Encode() (map[string]interface{}, error) {
 		"operation": generateResetToken,
 		"email":     grte.email,
 		"host":      grte.host,
+	}, nil
+}
+
+type generateEmailVerificationTokenEvent struct {
+	email string
+	host  string
+}
+
+func (grte generateEmailVerificationTokenEvent) Encode() (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"operation": generateVerifToken,
+		"email":     grte.email,
+		"host":      grte.host,
+	}, nil
+}
+
+type verifyEmailEvent struct{}
+
+func (grte verifyEmailEvent) Encode() (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"operation": verifyEmail,
 	}, nil
 }
 

@@ -21,6 +21,9 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// ErrFailedDecode indicates failed to decode request body
+var ErrFailedDecode = errors.New("failed to decode request body")
+
 // MakeHandler returns a HTTP handler for API endpoints.
 func clientsHandler(svc users.Service, r *chi.Mux, logger *slog.Logger) http.Handler {
 	opts := []kithttp.ServerOption{
@@ -33,6 +36,20 @@ func clientsHandler(svc users.Service, r *chi.Mux, logger *slog.Logger) http.Han
 			api.EncodeResponse,
 			opts...,
 		), "register_client").ServeHTTP)
+
+		r.Post("/verify-request", otelhttp.NewHandler(kithttp.NewServer(
+			emailVerificationRequestEndpoint(svc),
+			decodeEmailVerificationRequest,
+			api.EncodeResponse,
+			opts...,
+		), "verify_request").ServeHTTP)
+
+		r.Post("/verify", otelhttp.NewHandler(kithttp.NewServer(
+			emailVerificationEndpoint(svc),
+			decodeEmailVerification,
+			api.EncodeResponse,
+			opts...,
+		), "verify").ServeHTTP)
 
 		r.Get("/profile", otelhttp.NewHandler(kithttp.NewServer(
 			viewProfileEndpoint(svc),
@@ -332,6 +349,34 @@ func decodePasswordReset(_ context.Context, r *http.Request) (interface{}, error
 	var req resetTokenReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, errors.Wrap(apiutil.ErrValidation, errors.Wrap(err, errors.ErrMalformedEntity))
+	}
+
+	return req, nil
+}
+
+func decodeEmailVerificationRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), api.ContentType) {
+		return nil, errors.ErrUnsupportedContentType
+	}
+
+	var req emailVerificationReq
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(ErrFailedDecode, err)
+	}
+
+	req.Host = r.Header.Get("Referer")
+	return req, nil
+}
+
+func decodeEmailVerification(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), api.ContentType) {
+		return nil, errors.ErrUnsupportedContentType
+	}
+
+	var req emailVerificationTokenReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(ErrFailedDecode, err)
 	}
 
 	return req, nil

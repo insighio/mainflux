@@ -191,3 +191,21 @@ func (ms *metricsMiddleware) Identify(ctx context.Context, token string) (string
 	}(time.Now())
 	return ms.svc.Identify(ctx, token)
 }
+
+func (ms *metricsMiddleware) GenerateEmailVerificationToken(ctx context.Context, email, host string) (err error) {
+	defer func(begin time.Time) {
+		ms.counter.With("method", "generate_email_verification_token").Add(1)
+		ms.latency.With("method", "generate_email_verification_token").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return ms.svc.GenerateEmailVerificationToken(ctx, email, host)
+}
+
+func (ms *metricsMiddleware) VerifyEmail(ctx context.Context, emailVerificationToken string) (err error) {
+	defer func(begin time.Time) {
+		ms.counter.With("method", "verify_email").Add(1)
+		ms.latency.With("method", "verify_email").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return ms.svc.VerifyEmail(ctx, emailVerificationToken)
+}

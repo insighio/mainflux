@@ -57,7 +57,8 @@ const (
 	defDB          = "users"
 	defSvcHTTPPort = "9002"
 
-	streamID = "magistrala.users"
+	streamID        = "magistrala.users"
+	emailVerifyTmpl = "emailVerify.tmpl"
 )
 
 type config struct {
@@ -66,6 +67,7 @@ type config struct {
 	AdminPassword string  `env:"MG_USERS_ADMIN_PASSWORD"         envDefault:"12345678"`
 	PassRegexText string  `env:"MG_USERS_PASS_REGEX"             envDefault:"^.{8,}$"`
 	ResetURL      string  `env:"MG_TOKEN_RESET_ENDPOINT"         envDefault:"/reset-request"`
+	VerifyURL     string  `env:"MG_TOKEN_VERIFY_ENDPOINT"        envDefault:"/verify"`
 	JaegerURL     url.URL `env:"MG_JAEGER_URL"                   envDefault:"http://localhost:14268/api/traces"`
 	SendTelemetry bool    `env:"MG_SEND_TELEMETRY"               envDefault:"true"`
 	InstanceID    string  `env:"MG_USERS_INSTANCE_ID"            envDefault:""`
@@ -108,6 +110,13 @@ func main() {
 	ec := email.Config{}
 	if err := env.Parse(&ec); err != nil {
 		logger.Error(fmt.Sprintf("failed to load email configuration : %s", err.Error()))
+		exitCode = 1
+		return
+	}
+
+	vec := email.Config{Template: emailVerifyTmpl}
+	if err := env.Parse(&vec); err != nil {
+		logger.Error(fmt.Sprintf("failed to load email verification configuration : %s", err.Error()))
 		exitCode = 1
 		return
 	}
@@ -158,7 +167,7 @@ func main() {
 	defer authHandler.Close()
 	logger.Info("Successfully connected to auth grpc server " + authHandler.Secure())
 
-	csvc, gsvc, err := newService(ctx, authClient, db, dbConfig, tracer, cfg, ec, logger)
+	csvc, gsvc, err := newService(ctx, authClient, db, dbConfig, tracer, cfg, ec, vec, logger)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to setup service: %s", err))
 		exitCode = 1
@@ -193,7 +202,7 @@ func main() {
 	}
 }
 
-func newService(ctx context.Context, authClient magistrala.AuthServiceClient, db *sqlx.DB, dbConfig pgclient.Config, tracer trace.Tracer, c config, ec email.Config, logger *slog.Logger) (users.Service, groups.Service, error) {
+func newService(ctx context.Context, authClient magistrala.AuthServiceClient, db *sqlx.DB, dbConfig pgclient.Config, tracer trace.Tracer, c config, ec email.Config, vec email.Config, logger *slog.Logger) (users.Service, groups.Service, error) {
 	database := postgres.NewDatabase(db, dbConfig, tracer)
 	cRepo := clientspg.NewRepository(database)
 	gRepo := gpostgres.New(database)
@@ -201,7 +210,7 @@ func newService(ctx context.Context, authClient magistrala.AuthServiceClient, db
 	idp := uuid.New()
 	hsr := hasher.New()
 
-	emailerClient, err := emailer.New(c.ResetURL, &ec)
+	emailerClient, err := emailer.New(c.ResetURL, c.VerifyURL, &ec, &vec)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to configure e-mailing util: %s", err.Error()))
 	}

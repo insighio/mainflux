@@ -239,6 +239,19 @@ func (es *eventStore) GenerateResetToken(ctx context.Context, email, host string
 	return es.Publish(ctx, event)
 }
 
+func (es *eventStore) GenerateEmailVerificationToken(ctx context.Context, email, host string) error {
+	if err := es.svc.GenerateEmailVerificationToken(ctx, email, host); err != nil {
+		return err
+	}
+
+	event := generateEmailVerificationTokenEvent{
+		email: email,
+		host:  host,
+	}
+
+	return es.Publish(ctx, event)
+}
+
 func (es *eventStore) IssueToken(ctx context.Context, identity, secret, domainID string) (*magistrala.Token, error) {
 	token, err := es.svc.IssueToken(ctx, identity, secret, domainID)
 	if err != nil {
@@ -292,6 +305,16 @@ func (es *eventStore) SendPasswordReset(ctx context.Context, host, email, user, 
 		email: email,
 		user:  user,
 	}
+
+	return es.Publish(ctx, event)
+}
+
+func (es *eventStore) VerifyEmail(ctx context.Context, emailVerificationToken string) error {
+	if err := es.svc.VerifyEmail(ctx, emailVerificationToken); err != nil {
+		return err
+	}
+
+	event := verifyEmailEvent{}
 
 	return es.Publish(ctx, event)
 }

@@ -37,6 +37,8 @@ const (
 	RefreshKey
 	// RecoveryKey represents a key for resseting password.
 	RecoveryKey
+	// Verification Key for verifying registration email
+	EmailVerificationKey
 	// APIKey enables the one to act on behalf of the user.
 	APIKey
 	// InvitationKey is a key for inviting new users.
@@ -51,6 +53,8 @@ func (kt KeyType) String() string {
 		return "refresh"
 	case RecoveryKey:
 		return "recovery"
+	case EmailVerificationKey:
+		return "verification"
 	case APIKey:
 		return "API"
 	default:

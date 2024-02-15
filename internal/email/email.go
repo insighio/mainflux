@@ -47,7 +47,6 @@ type Config struct {
 // Agent for mailing.
 type Agent struct {
 	conf *Config
-	tmpl *template.Template
 	dial *gomail.Dialer
 }
 
@@ -62,18 +61,14 @@ func New(c *Config) (*Agent, error) {
 	d := gomail.NewDialer(c.Host, port, c.Username, c.Password)
 	a.dial = d
 
-	tmpl, err := template.ParseFiles(c.Template)
-	if err != nil {
-		return a, errors.Wrap(errParseTemplate, err)
-	}
-	a.tmpl = tmpl
 	return a, nil
 }
 
 // Send sends e-mail.
-func (a *Agent) Send(to []string, from, subject, header, user, content, footer string) error {
-	if a.tmpl == nil {
-		return errMissingEmailTemplate
+func (a *Agent) Send(to []string, from, subject, header, user, content, footer string, Template string) error {
+	selectedTmpl, err := template.ParseFiles(Template)
+	if err != nil {
+		return errParseTemplate
 	}
 
 	buff := new(bytes.Buffer)
@@ -92,7 +87,7 @@ func (a *Agent) Send(to []string, from, subject, header, user, content, footer s
 		e.From = from.String()
 	}
 
-	if err := a.tmpl.Execute(buff, e); err != nil {
+	if err := selectedTmpl.Execute(buff, e); err != nil {
 		return errors.Wrap(errExecTemplate, err)
 	}
 

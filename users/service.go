@@ -22,6 +22,14 @@ var (
 	// ErrRecoveryToken indicates error in generating password recovery token.
 	ErrRecoveryToken = errors.New("failed to generate password recovery token")
 
+	// ErrMissingVerificationToken indicates malformed or missing reset token
+	// for verifying email.
+	ErrMissingVerificationToken = errors.New("error missing user verification token")
+
+	// ErrGeneratingResetToken indicates error in generating password recovery
+	// token
+	ErrGeneratingVerificationToken = errors.New("failed to generate user verification token")
+
 	// ErrPasswordFormat indicates weak password.
 	ErrPasswordFormat = errors.New("password does not meet the requirements")
 
@@ -298,6 +306,22 @@ func (svc service) GenerateResetToken(ctx context.Context, email, host string) e
 	return svc.SendPasswordReset(ctx, host, email, client.Name, token.AccessToken)
 }
 
+func (svc service) GenerateEmailVerificationToken(ctx context.Context, email, host string) error {
+	client, err := svc.clients.RetrieveByIdentity(ctx, email)
+	if err != nil || client.Credentials.Identity == "" {
+		return errors.ErrNotFound
+	}
+	issueReq := &magistrala.IssueReq{
+		UserId: client.ID,
+		Type:   uint32(auth.EmailVerificationKey),
+	}
+	token, err := svc.auth.Issue(ctx, issueReq)
+	if err != nil {
+		return errors.Wrap(ErrGeneratingVerificationToken, err)
+	}
+	return svc.SendEmailVerification(ctx, host, email, client.Name, token.AccessToken)
+}
+
 func (svc service) ResetSecret(ctx context.Context, resetToken, secret string) error {
 	id, err := svc.Identify(ctx, resetToken)
 	if err != nil {
@@ -329,6 +353,20 @@ func (svc service) ResetSecret(ctx context.Context, resetToken, secret string) e
 		return errors.Wrap(svcerr.ErrAuthorization, err)
 	}
 	return nil
+}
+
+func (svc service) VerifyEmail(ctx context.Context, emailVerificationToken string) error {
+	userIdentity, err := svc.identify(ctx, emailVerificationToken)
+	if err != nil {
+		return errors.Wrap(errors.ErrAuthentication, err)
+	}
+
+	u, err := svc.clients.RetrieveByID(ctx, userIdentity.UserId)
+	if err != nil || u.Credentials.Identity == "" {
+		return errors.ErrAuthentication
+	}
+
+	return svc.clients.VerifyEmail(ctx, u.Credentials.Identity)
 }
 
 func (svc service) UpdateClientSecret(ctx context.Context, token, oldSecret, newSecret string) (mgclients.Client, error) {
@@ -365,6 +403,12 @@ func (svc service) UpdateClientSecret(ctx context.Context, token, oldSecret, new
 func (svc service) SendPasswordReset(_ context.Context, host, email, user, token string) error {
 	to := []string{email}
 	return svc.email.SendPasswordReset(to, host, user, token)
+}
+
+// SendEmailVerification sends password recovery link to user
+func (svc service) SendEmailVerification(_ context.Context, host, email, user, token string) error {
+	to := []string{email}
+	return svc.email.SendEmailVerification(to, host, user, token)
 }
 
 func (svc service) UpdateClientRole(ctx context.Context, token string, cli mgclients.Client) (mgclients.Client, error) {

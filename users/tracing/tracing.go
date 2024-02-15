@@ -123,6 +123,17 @@ func (tm *tracingMiddleware) GenerateResetToken(ctx context.Context, email, host
 	return tm.svc.GenerateResetToken(ctx, email, host)
 }
 
+// GenerateEmailVerificationToken traces the "GenerateEmailVerificationToken" operation of the wrapped clients.Service.
+func (tm *tracingMiddleware) GenerateEmailVerificationToken(ctx context.Context, email, host string) error {
+	ctx, span := tm.tracer.Start(ctx, "svc_generate_email_verification_token", trace.WithAttributes(
+		attribute.String("email", email),
+		attribute.String("host", host),
+	))
+	defer span.End()
+
+	return tm.svc.GenerateEmailVerificationToken(ctx, email, host)
+}
+
 // ResetSecret traces the "ResetSecret" operation of the wrapped clients.Service.
 func (tm *tracingMiddleware) ResetSecret(ctx context.Context, token, secret string) error {
 	ctx, span := tm.tracer.Start(ctx, "svc_reset_secret")
@@ -140,6 +151,16 @@ func (tm *tracingMiddleware) SendPasswordReset(ctx context.Context, host, email,
 	defer span.End()
 
 	return tm.svc.SendPasswordReset(ctx, host, email, user, token)
+}
+
+// VerifyEmail traces the "VerifyEmail" operation of the wrapped clients.Service.
+func (tm *tracingMiddleware) VerifyEmail(ctx context.Context, email string) error {
+	ctx, span := tm.tracer.Start(ctx, "svc_send_password_reset", trace.WithAttributes(
+		attribute.String("email", email),
+	))
+	defer span.End()
+
+	return tm.svc.VerifyEmail(ctx, email)
 }
 
 // ViewProfile traces the "ViewProfile" operation of the wrapped clients.Service.
