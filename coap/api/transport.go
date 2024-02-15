@@ -44,8 +44,9 @@ var (
 )
 
 var (
-	logger  *slog.Logger
-	service coap.Service
+	logger      *slog.Logger
+	service     coap.Service
+	authQueryV2 = "authorization"
 )
 
 // MakeHandler returns a HTTP handler for API endpoints.
@@ -66,7 +67,7 @@ func MakeCoAPHandler(svc coap.Service, l *slog.Logger) mux.HandlerFunc {
 }
 
 func sendResp(w mux.ResponseWriter, resp *message.Message) {
-	if err := w.Client().WriteMessage(resp); err != nil {
+	if err := w.SetResponse(resp.Code, message.AppJSON, resp.Body); err != nil {
 		logger.Warn(fmt.Sprintf("Can't set response: %s", err))
 	}
 }
@@ -173,7 +174,7 @@ func parseKey(msg *mux.Message) (string, error) {
 		return "", err
 	}
 	vars := strings.Split(authKey, "=")
-	if len(vars) != 2 || vars[0] != authQuery {
+	if len(vars) != 2 || (vars[0] != authQuery && vars[0] != authQueryV2) {
 		return "", errors.ErrAuthorization
 	}
 	return vars[1], nil
