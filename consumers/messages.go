@@ -49,12 +49,12 @@ func Start(ctx context.Context, id string, sub messaging.Subscriber, consumer in
 		}
 		switch c := consumer.(type) {
 		case AsyncConsumer:
-			subCfg.Handler = handleAsync(ctx, transformer, c)
+			subCfg.Handler = handleAsync(ctx, transformer, c, logger)
 			if err := sub.Subscribe(ctx, subCfg); err != nil {
 				return err
 			}
 		case BlockingConsumer:
-			subCfg.Handler = handleSync(ctx, transformer, c)
+			subCfg.Handler = handleSync(ctx, transformer, c, logger)
 			if err := sub.Subscribe(ctx, subCfg); err != nil {
 				return err
 			}
@@ -65,13 +65,14 @@ func Start(ctx context.Context, id string, sub messaging.Subscriber, consumer in
 	return nil
 }
 
-func handleSync(ctx context.Context, t transformers.Transformer, sc BlockingConsumer) handleFunc {
+func handleSync(ctx context.Context, t transformers.Transformer, sc BlockingConsumer, logger *slog.Logger) handleFunc {
 	return func(msg *messaging.Message) error {
 		m := interface{}(msg)
 		var err error
 		if t != nil {
 			m, err = t.Transform(msg)
 			if err != nil {
+				logger.Warn(fmt.Sprintf("handleSync - Failed to transform received message: %s, message: %s", err, string(msg.String())))
 				return err
 			}
 		}
@@ -79,13 +80,14 @@ func handleSync(ctx context.Context, t transformers.Transformer, sc BlockingCons
 	}
 }
 
-func handleAsync(ctx context.Context, t transformers.Transformer, ac AsyncConsumer) handleFunc {
+func handleAsync(ctx context.Context, t transformers.Transformer, ac AsyncConsumer, logger *slog.Logger) handleFunc {
 	return func(msg *messaging.Message) error {
 		m := interface{}(msg)
 		var err error
 		if t != nil {
 			m, err = t.Transform(msg)
 			if err != nil {
+				logger.Warn(fmt.Sprintf("handleAsync - Failed to transform received message: %s, message: %s", err, string(msg.String())))
 				return err
 			}
 		}
