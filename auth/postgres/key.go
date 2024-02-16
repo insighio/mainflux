@@ -35,8 +35,8 @@ func New(db postgres.Database) auth.KeyRepository {
 }
 
 func (kr *repo) Save(ctx context.Context, key auth.Key) (string, error) {
-	q := `INSERT INTO keys (id, type, issuer_id, subject, issued_at, expires_at)
-	      VALUES (:id, :type, :issuer_id, :subject, :issued_at, :expires_at)`
+	q := `INSERT INTO keys (id, name, type, issuer_id, subject, issued_at, expires_at)
+	      VALUES (:id, :name, :type, :issuer_id, :subject, :issued_at, :expires_at)`
 
 	dbKey := toDBKey(key)
 	if _, err := kr.db.NamedExecContext(ctx, q, dbKey); err != nil {
@@ -47,7 +47,7 @@ func (kr *repo) Save(ctx context.Context, key auth.Key) (string, error) {
 }
 
 func (kr *repo) Retrieve(ctx context.Context, issuerID, id string) (auth.Key, error) {
-	q := `SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys WHERE issuer_id = $1 AND id = $2`
+	q := `SELECT id, name, type, issuer_id, subject, issued_at, expires_at FROM keys WHERE issuer_id = $1 AND id = $2`
 	key := dbKey{}
 	if err := kr.db.QueryRowxContext(ctx, q, issuerID, id).StructScan(&key); err != nil {
 		if err == sql.ErrNoRows {
@@ -74,7 +74,7 @@ func (kr repo) RetrieveAll(ctx context.Context, issuerID string, pm auth.PageMet
 		emq = fmt.Sprintf(" WHERE %s", strings.Join(query, " AND "))
 	}
 
-	q := fmt.Sprintf(`SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
+	q := fmt.Sprintf(`SELECT id, name, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
 	params := map[string]interface{}{
 		"limit":  pm.Limit,
 		"offset": pm.Offset,
