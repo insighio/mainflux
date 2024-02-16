@@ -18,6 +18,7 @@ var (
 
 type issueKeyRes struct {
 	ID        string     `json:"id,omitempty"`
+	Name      string     `json:"name,omitempty"`
 	Value     string     `json:"value,omitempty"`
 	IssuedAt  time.Time  `json:"issued_at,omitempty"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
@@ -37,6 +38,7 @@ func (res issueKeyRes) Empty() bool {
 
 type retrieveKeyRes struct {
 	ID        string       `json:"id,omitempty"`
+	Name      string       `json:"name,omitempty"`
 	IssuerID  string       `json:"issuer_id,omitempty"`
 	Subject   string       `json:"subject,omitempty"`
 	Type      auth.KeyType `json:"type,omitempty"`

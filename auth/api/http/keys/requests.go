@@ -13,6 +13,7 @@ import (
 type issueKeyReq struct {
 	token    string
 	Type     auth.KeyType  `json:"type,omitempty"`
+	Name     string        `json:"name,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
 }
 
@@ -26,6 +27,10 @@ func (req issueKeyReq) validate() error {
 		req.Type != auth.RecoveryKey &&
 		req.Type != auth.APIKey {
 		return apiutil.ErrInvalidAPIKey
+	}
+
+	if req.Type == auth.APIKey && req.Name != "" {
+		return apiutil.ErrMissingName
 	}
 
 	return nil

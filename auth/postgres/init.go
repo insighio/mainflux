@@ -51,6 +51,17 @@ func Migration() *migrate.MemoryMigrationSource {
 					`DROP TABLE IF EXISTS keys`,
 				},
 			},
+			{
+				Id: "auth_2_insighio",
+				Up: []string{
+					`ALTER TABLE keys 
+					 ADD COLUMN name VARCHAR(254) NOT NULL DEFAULT 'API key'`,
+					`ALTER TABLE keys ALTER COLUMN name DROP DEFAULT`,
+				},
+				Down: []string{
+					`ALTER TABLE keys DROP COLUMN name`,
+				},
+			},
 		},
 	}
 }

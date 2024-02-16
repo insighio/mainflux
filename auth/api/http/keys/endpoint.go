@@ -22,6 +22,7 @@ func issueEndpoint(svc auth.Service) endpoint.Endpoint {
 		newKey := auth.Key{
 			IssuedAt: now,
 			Type:     req.Type,
+			Name:     req.Name,
 		}
 
 		duration := time.Duration(req.Duration * time.Second)
@@ -99,12 +100,18 @@ func retrieveKeysEndpoint(svc auth.Service) endpoint.Endpoint {
 
 		for _, key := range kp.Keys {
 			view := retrieveKeyRes{
-				ID:        key.ID,
-				IssuerID:  key.Issuer,
-				Subject:   key.Subject,
-				Type:      key.Type,
-				IssuedAt:  key.IssuedAt,
-				ExpiresAt: &key.ExpiresAt,
+				ID:       key.ID,
+				IssuerID: key.Issuer,
+				Subject:  key.Subject,
+				Type:     key.Type,
+				IssuedAt: key.IssuedAt,
+			}
+			if !key.ExpiresAt.IsZero() {
+				// The intermediate variable is needed because
+				// the key variable is reused in the loop and
+				// all values are the same in the key.expiresAt pointer
+				expiresAt := key.ExpiresAt
+				view.ExpiresAt = &expiresAt
 			}
 			res.Keys = append(res.Keys, view)
 		}
