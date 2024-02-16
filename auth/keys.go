@@ -37,10 +37,10 @@ const (
 	RefreshKey
 	// RecoveryKey represents a key for resseting password.
 	RecoveryKey
-	// Verification Key for verifying registration email
-	EmailVerificationKey
 	// APIKey enables the one to act on behalf of the user.
 	APIKey
+	// Verification Key for verifying registration email
+	EmailVerificationKey
 	// InvitationKey is a key for inviting new users.
 	InvitationKey
 )
@@ -65,6 +65,7 @@ func (kt KeyType) String() string {
 // Key represents API key.
 type Key struct {
 	ID        string    `json:"id,omitempty"`
+	Name      string    `json:"name,omitempty"`
 	Type      KeyType   `json:"type,omitempty"`
 	Issuer    string    `json:"issuer,omitempty"`
 	Subject   string    `json:"subject,omitempty"` // user ID
