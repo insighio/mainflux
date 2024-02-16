@@ -6,6 +6,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/absmach/magistrala/auth"
@@ -17,6 +19,7 @@ var (
 	errSave     = errors.New("failed to save key in database")
 	errRetrieve = errors.New("failed to retrieve key from database")
 	errDelete   = errors.New("failed to delete key from database")
+	errView     = errors.New("View entity failed")
 )
 var _ auth.KeyRepository = (*repo)(nil)
 
@@ -55,6 +58,62 @@ func (kr *repo) Retrieve(ctx context.Context, issuerID, id string) (auth.Key, er
 	}
 
 	return toKey(key), nil
+}
+
+func (kr repo) RetrieveAll(ctx context.Context, issuerID string, pm auth.PageMetadata) (auth.KeyPage, error) {
+	var query []string
+	var emq string
+	query = append(query, fmt.Sprintf("issuer_id = '%s'", issuerID))
+	if pm.Type != 0 {
+		query = append(query, fmt.Sprintf("type = '%d'", pm.Type))
+	}
+	if pm.Subject != "" {
+		query = append(query, fmt.Sprintf("subject = '%s'", pm.Subject))
+	}
+	if len(query) > 0 {
+		emq = fmt.Sprintf(" WHERE %s", strings.Join(query, " AND "))
+	}
+
+	q := fmt.Sprintf(`SELECT id, type, issuer_id, subject, issued_at, expires_at FROM keys %s ORDER BY issued_at LIMIT :limit OFFSET :offset;`, emq)
+	params := map[string]interface{}{
+		"limit":  pm.Limit,
+		"offset": pm.Offset,
+	}
+
+	rows, err := kr.db.NamedQueryContext(ctx, q, params)
+	if err != nil {
+		return auth.KeyPage{}, errors.Wrap(errView, err)
+	}
+	defer rows.Close()
+
+	var items []auth.Key
+	for rows.Next() {
+		dbkey := dbKey{}
+		if err := rows.StructScan(&dbkey); err != nil {
+			return auth.KeyPage{}, errors.Wrap(errView, err)
+		}
+
+		key := toKey(dbkey)
+		items = append(items, key)
+	}
+
+	cq := fmt.Sprintf(`SELECT COUNT(*) FROM keys %s;`, emq)
+
+	total, err := postgres.Total(ctx, kr.db, cq, params)
+	if err != nil {
+		return auth.KeyPage{}, errors.Wrap(errView, err)
+	}
+
+	page := auth.KeyPage{
+		Keys: items,
+		PageMetadata: auth.PageMetadata{
+			Total:  total,
+			Offset: pm.Offset,
+			Limit:  pm.Limit,
+		},
+	}
+
+	return page, nil
 }
 
 func (kr *repo) Remove(ctx context.Context, issuerID, id string) error {

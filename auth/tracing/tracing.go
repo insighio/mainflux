@@ -52,6 +52,15 @@ func (tm *tracingMiddleware) RetrieveKey(ctx context.Context, token, id string) 
 	return tm.svc.RetrieveKey(ctx, token, id)
 }
 
+func (tm *tracingMiddleware) RetrieveKeys(ctx context.Context, owner string, pm auth.PageMetadata) (auth.KeyPage, error) {
+	ctx, span := tm.tracer.Start(ctx, "retrieve_all", trace.WithAttributes(
+		attribute.String("owner", owner),
+	))
+	defer span.End()
+
+	return tm.svc.RetrieveKeys(ctx, owner, pm)
+}
+
 func (tm *tracingMiddleware) Identify(ctx context.Context, token string) (auth.Key, error) {
 	ctx, span := tm.tracer.Start(ctx, "identify")
 	defer span.End()

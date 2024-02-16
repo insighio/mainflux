@@ -18,7 +18,16 @@ import (
 	kithttp "github.com/go-kit/kit/transport/http"
 )
 
-const contentType = "application/json"
+const (
+	contentType = "application/json"
+	offsetKey   = "offset"
+	limitKey    = "limit"
+	subjectKey  = "subject"
+	typeKey     = "type"
+	defOffset   = 0
+	defLimit    = 10
+	defType     = 3
+)
 
 // MakeHandler returns a HTTP handler for API endpoints.
 func MakeHandler(svc auth.Service, mux *chi.Mux, logger *slog.Logger) *chi.Mux {
@@ -26,6 +35,13 @@ func MakeHandler(svc auth.Service, mux *chi.Mux, logger *slog.Logger) *chi.Mux {
 		kithttp.ServerErrorEncoder(apiutil.LoggingErrorEncoder(logger, api.EncodeError)),
 	}
 	mux.Route("/keys", func(r chi.Router) {
+		r.Get("/", kithttp.NewServer(
+			retrieveKeysEndpoint(svc),
+			decodeListKeysRequest,
+			api.EncodeResponse,
+			opts...,
+		).ServeHTTP)
+
 		r.Post("/", kithttp.NewServer(
 			issueEndpoint(svc),
 			decodeIssue,
@@ -67,6 +83,37 @@ func decodeKeyReq(_ context.Context, r *http.Request) (interface{}, error) {
 	req := keyReq{
 		token: apiutil.ExtractBearerToken(r),
 		id:    chi.URLParam(r, "id"),
+	}
+	return req, nil
+}
+
+func decodeListKeysRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	s, err := apiutil.ReadStringQuery(r, subjectKey, "")
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := apiutil.ReadNumQuery[uint64](r, typeKey, defType)
+	if err != nil {
+		return nil, err
+	}
+
+	o, err := apiutil.ReadNumQuery[uint64](r, offsetKey, defOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	l, err := apiutil.ReadNumQuery[uint64](r, limitKey, defLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	req := listKeysReq{
+		token:   apiutil.ExtractBearerToken(r),
+		subject: s,
+		keyType: uint32(t),
+		offset:  o,
+		limit:   l,
 	}
 	return req, nil
 }

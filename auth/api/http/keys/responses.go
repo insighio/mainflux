@@ -66,6 +66,17 @@ func (res revokeKeyRes) Headers() map[string]string {
 	return map[string]string{}
 }
 
+type keyPageRes struct {
+	pageRes
+	Keys []retrieveKeyRes `json:"keys"`
+}
+
+type pageRes struct {
+	Limit  uint64 `json:"limit,omitempty"`
+	Offset uint64 `json:"offset,omitempty"`
+	Total  uint64 `json:"total"`
+}
+
 func (res revokeKeyRes) Empty() bool {
 	return true
 }

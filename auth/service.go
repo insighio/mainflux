@@ -72,6 +72,10 @@ type Authn interface {
 	// ID, that is issued by the user identified by the provided key.
 	RetrieveKey(ctx context.Context, token, id string) (Key, error)
 
+	// RetrieveKeys retrieves data for the Keys that are
+	// issued by the user identified by the provided key.
+	RetrieveKeys(ctx context.Context, token string, pm PageMetadata) (KeyPage, error)
+
 	// Identify validates token token. If token is valid, content
 	// is returned. If token is invalid, or invocation failed for some
 	// other reason, non-nil error value is returned in response.
@@ -157,6 +161,15 @@ func (svc service) RetrieveKey(ctx context.Context, token, id string) (Key, erro
 		return Key{}, errors.Wrap(errRetrieve, err)
 	}
 	return key, nil
+}
+
+func (svc service) RetrieveKeys(ctx context.Context, token string, pm PageMetadata) (KeyPage, error) {
+	issuerID, _, err := svc.authenticate(token)
+	if err != nil {
+		return KeyPage{}, errors.Wrap(errRetrieve, err)
+	}
+
+	return svc.keys.RetrieveAll(ctx, issuerID, pm)
 }
 
 func (svc service) Identify(ctx context.Context, token string) (Key, error) {
