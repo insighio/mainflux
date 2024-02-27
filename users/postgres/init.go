@@ -37,6 +37,20 @@ func Migration() *migrate.MemoryMigrationSource {
 					`DROP TABLE IF EXISTS clients`,
 				},
 			},
+			{
+				Id: "users_to_clients_01",
+				Up: []string{
+					`DO $$ BEGIN
+						IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+							INSERT INTO clients (id, name, domain_id, identity, secret, tags, metadata, created_at, updated_at, updated_by, status, role)
+							SELECT id, email, NULL, email, password, NULL, metadata, NOW(), NOW(), NULL, 0, 0 FROM users;
+						END IF;
+					END $$`,
+				},
+				Down: []string{
+					`DELETE FROM clients WHERE id IN (SELECT id FROM users)`,
+				},
+			},
 		},
 	}
 }
