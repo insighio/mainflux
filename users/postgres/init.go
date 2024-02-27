@@ -43,7 +43,7 @@ func Migration() *migrate.MemoryMigrationSource {
 					`DO $$ BEGIN
 						IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
 							INSERT INTO clients (id, name, domain_id, identity, secret, tags, metadata, created_at, updated_at, updated_by, status, role)
-							SELECT id, email, NULL, email, password, NULL, metadata, NOW(), NOW(), NULL, 0, 0 FROM users;
+							SELECT id, email, NULL, email, password, NULL, metadata, NOW(), NULL, NULL, 0, 0 FROM users;
 						END IF;
 					END $$`,
 				},
