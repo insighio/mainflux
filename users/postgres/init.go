@@ -41,10 +41,12 @@ func Migration() *migrate.MemoryMigrationSource {
 				Id: "secret_01",
 				Up: []string{
 					`DO $$ BEGIN
-						UPDATE clients
-						SET secret = users.password
-						FROM users
-						WHERE clients.id = users.id;
+						IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+							UPDATE clients
+							SET secret = users.password
+							FROM users
+							WHERE clients.id = users.id;
+						END IF;
 					END $$`,
 				},
 			},
