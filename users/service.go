@@ -83,9 +83,12 @@ func (svc service) RegisterClient(ctx context.Context, token string, cli mgclien
 		}
 	}
 
-	clientID, err := svc.idProvider.ID()
-	if err != nil {
-		return mgclients.Client{}, errors.Wrap(svcerr.ErrUniqueID, err)
+	if cli.ID == "" {
+		clientID, err := svc.idProvider.ID()
+		if err != nil {
+			return mgclients.Client{}, errors.Wrap(svcerr.ErrUniqueID, err)
+		}
+		cli.ID = clientID
 	}
 
 	if cli.Credentials.Secret == "" {
@@ -102,7 +105,7 @@ func (svc service) RegisterClient(ctx context.Context, token string, cli mgclien
 	if cli.Role != mgclients.UserRole && cli.Role != mgclients.AdminRole {
 		return mgclients.Client{}, svcerr.ErrInvalidRole
 	}
-	cli.ID = clientID
+
 	cli.CreatedAt = time.Now()
 
 	if err := svc.addClientPolicy(ctx, cli.ID, cli.Role); err != nil {
