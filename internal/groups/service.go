@@ -24,6 +24,7 @@ var (
 	errDeletePolicies = errors.New("failed to delete policies")
 	errRetrieveGroups = errors.New("failed to retrieve groups")
 	errGroupIDs       = errors.New("invalid group ids")
+	errUniqueID       = errors.New("failed to generate unique identifier")
 )
 
 type service struct {
@@ -50,7 +51,6 @@ func (svc service) CreateGroup(ctx context.Context, token, kind string, g groups
 	if _, err := svc.authorizeKind(ctx, "", auth.UserType, auth.UsersKind, res.GetId(), auth.MembershipPermission, auth.DomainType, res.GetDomainId()); err != nil {
 		return groups.Group{}, err
 	}
-	groupID, err := svc.idProvider.ID()
 	if err != nil {
 		return groups.Group{}, err
 	}
@@ -58,7 +58,14 @@ func (svc service) CreateGroup(ctx context.Context, token, kind string, g groups
 		return groups.Group{}, apiutil.ErrInvalidStatus
 	}
 
-	g.ID = groupID
+	if g.ID == "" {
+		groupID, err := svc.idProvider.ID()
+		if err != nil {
+			return groups.Group{}, errors.Wrap(errUniqueID, err)
+		}
+		g.ID = groupID
+	}
+
 	g.CreatedAt = time.Now()
 	g.Domain = res.GetDomainId()
 	if g.Parent != "" {
