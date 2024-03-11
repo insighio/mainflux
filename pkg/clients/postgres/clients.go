@@ -250,7 +250,7 @@ func (repo *Repository) RetrieveAllByIDs(ctx context.Context, pm clients.Page) (
 		return clients.ClientsPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
 	}
 
-	q := fmt.Sprintf(`SELECT c.id, c.name, c.tags, c.identity, c.metadata, COALESCE(c.domain_id, '') AS domain_id, c.status,
+	q := fmt.Sprintf(`SELECT c.id, c.name, c.tags, c.identity, c.secret, c.metadata, COALESCE(c.domain_id, '') AS domain_id, c.status,
 					c.created_at, c.updated_at, COALESCE(c.updated_by, '') AS updated_by FROM clients c %s ORDER BY c.created_at LIMIT :limit OFFSET :offset;`, query)
 
 	dbPage, err := ToDBClientsPage(pm)
