@@ -84,6 +84,9 @@ func (svc service) CreateThings(ctx context.Context, token string, cls ...mgclie
 			}
 			c.ID = clientID
 		}
+		if c.Credentials.Identity == "" {
+			c.Credentials.Identity = c.ID
+		}
 		if c.Credentials.Secret == "" {
 			key, err := svc.idProvider.ID()
 			if err != nil {
