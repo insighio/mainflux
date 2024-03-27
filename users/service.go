@@ -197,19 +197,8 @@ func (svc service) ListClients(ctx context.Context, token string, pm mgclients.P
 		return pg, err
 	}
 
-	p := mgclients.Page{
-		Status:   mgclients.EnabledStatus,
-		Offset:   pm.Offset,
-		Limit:    pm.Limit,
-		Name:     pm.Name,
-		Identity: pm.Identity,
-		Role:     mgclients.UserRole,
-	}
-	pg, err := svc.clients.RetrieveAll(ctx, p)
-	if err != nil {
-		return mgclients.ClientsPage{}, errors.Wrap(svcerr.ErrNotFound, err)
-	}
-	return pg, nil
+	// Non super admin user can't list all clients
+	return mgclients.ClientsPage{}, svcerr.ErrAuthorization
 }
 
 func (svc service) UpdateClient(ctx context.Context, token string, cli mgclients.Client) (mgclients.Client, error) {
