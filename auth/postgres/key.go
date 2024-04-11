@@ -60,15 +60,13 @@ func (kr *repo) Retrieve(ctx context.Context, issuerID, id string) (auth.Key, er
 	return toKey(key), nil
 }
 
-func (kr repo) RetrieveAll(ctx context.Context, issuerID string, pm auth.PageMetadata) (auth.KeyPage, error) {
+func (kr repo) RetrieveAll(ctx context.Context, issuerID string, subject string, pm auth.PageMetadata) (auth.KeyPage, error) {
 	var query []string
 	var emq string
 	query = append(query, fmt.Sprintf("issuer_id = '%s'", issuerID))
+	query = append(query, fmt.Sprintf("subject = '%s'", subject))
 	if pm.Type != 0 {
 		query = append(query, fmt.Sprintf("type = '%d'", pm.Type))
-	}
-	if pm.Subject != "" {
-		query = append(query, fmt.Sprintf("subject = '%s'", pm.Subject))
 	}
 	if len(query) > 0 {
 		emq = fmt.Sprintf(" WHERE %s", strings.Join(query, " AND "))

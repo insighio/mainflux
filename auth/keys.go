@@ -76,11 +76,10 @@ type Key struct {
 }
 
 type PageMetadata struct {
-	Total   uint64 `json:"total"`
-	Offset  uint64 `json:"offset"`
-	Limit   uint64 `json:"limit"`
-	Type    uint32 `json:"type"`
-	Subject string `json:"subject"`
+	Total  uint64 `json:"total"`
+	Offset uint64 `json:"offset"`
+	Limit  uint64 `json:"limit"`
+	Type   uint32 `json:"type"`
 }
 
 // KeyPage contains a page of keys.
@@ -122,7 +121,7 @@ type KeyRepository interface {
 	Retrieve(ctx context.Context, issuer string, id string) (key Key, err error)
 
 	// RetrieveAll retrieves all keys for given user ID.
-	RetrieveAll(context.Context, string, PageMetadata) (KeyPage, error)
+	RetrieveAll(ctx context.Context, issuer string, subject string, pm PageMetadata) (KeyPage, error)
 
 	// Remove removes Key with provided ID.
 	Remove(ctx context.Context, issuer string, id string) error

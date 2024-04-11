@@ -164,12 +164,12 @@ func (svc service) RetrieveKey(ctx context.Context, token, id string) (Key, erro
 }
 
 func (svc service) RetrieveKeys(ctx context.Context, token string, pm PageMetadata) (KeyPage, error) {
-	issuerID, _, err := svc.authenticate(token)
+	issuerID, subject, err := svc.authenticate(token)
 	if err != nil {
 		return KeyPage{}, errors.Wrap(errRetrieve, err)
 	}
 
-	return svc.keys.RetrieveAll(ctx, issuerID, pm)
+	return svc.keys.RetrieveAll(ctx, issuerID, subject, pm)
 }
 
 func (svc service) Identify(ctx context.Context, token string) (Key, error) {

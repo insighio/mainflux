@@ -80,10 +80,9 @@ func retrieveKeysEndpoint(svc auth.Service) endpoint.Endpoint {
 			return nil, err
 		}
 		pm := auth.PageMetadata{
-			Offset:  req.offset,
-			Limit:   req.limit,
-			Subject: req.subject,
-			Type:    req.keyType,
+			Offset: req.offset,
+			Limit:  req.limit,
+			Type:   req.keyType,
 		}
 		kp, err := svc.RetrieveKeys(ctx, req.token, pm)
 		if err != nil {
