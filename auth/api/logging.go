@@ -212,12 +212,15 @@ func (lm *loggingMiddleware) RetrieveKey(ctx context.Context, token, id string) 
 
 func (lm *loggingMiddleware) RetrieveKeys(ctx context.Context, token string, pm auth.PageMetadata) (kp auth.KeyPage, err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method retrieve for token %s took %s to complete", token, time.Since(begin))
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+		}
 		if err != nil {
-			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Retrieve keys failed to complete successfully", args...)
 			return
 		}
-		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
+		lm.logger.Info("Retrieve keys completed successfully", args...)
 	}(time.Now())
 
 	return lm.svc.RetrieveKeys(ctx, token, pm)
