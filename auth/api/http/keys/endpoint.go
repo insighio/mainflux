@@ -31,13 +31,19 @@ func issueEndpoint(svc auth.Service) endpoint.Endpoint {
 			newKey.ExpiresAt = exp
 		}
 
-		tkn, err := svc.Issue(ctx, req.token, newKey)
+		key, tkn, err := svc.Issue(ctx, req.token, newKey)
 		if err != nil {
 			return nil, err
 		}
 
 		res := issueKeyRes{
-			Value: tkn.AccessToken,
+			ID:       key.ID,
+			Name:     key.Name,
+			Value:    tkn.AccessToken,
+			IssuedAt: key.IssuedAt,
+		}
+		if !key.ExpiresAt.IsZero() {
+			res.ExpiresAt = &key.ExpiresAt
 		}
 
 		return res, nil
