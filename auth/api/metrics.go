@@ -91,7 +91,7 @@ func (ms *metricsMiddleware) ListPermissions(ctx context.Context, pr auth.Policy
 	return ms.svc.ListPermissions(ctx, pr, filterPermissions)
 }
 
-func (ms *metricsMiddleware) Issue(ctx context.Context, token string, key auth.Key) (auth.Token, error) {
+func (ms *metricsMiddleware) Issue(ctx context.Context, token string, key auth.Key) (auth.Key, auth.Token, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "issue_key").Add(1)
 		ms.latency.With("method", "issue_key").Observe(time.Since(begin).Seconds())

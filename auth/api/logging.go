@@ -156,7 +156,7 @@ func (lm *loggingMiddleware) ListPermissions(ctx context.Context, pr auth.Policy
 	return lm.svc.ListPermissions(ctx, pr, filterPermissions)
 }
 
-func (lm *loggingMiddleware) Issue(ctx context.Context, token string, key auth.Key) (tkn auth.Token, err error) {
+func (lm *loggingMiddleware) Issue(ctx context.Context, token string, key auth.Key) (k auth.Key, tkn auth.Token, err error) {
 	defer func(begin time.Time) {
 		args := []any{
 			slog.String("duration", time.Since(begin).String()),

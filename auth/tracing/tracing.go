@@ -24,7 +24,7 @@ func New(svc auth.Service, tracer trace.Tracer) auth.Service {
 	return &tracingMiddleware{tracer, svc}
 }
 
-func (tm *tracingMiddleware) Issue(ctx context.Context, token string, key auth.Key) (auth.Token, error) {
+func (tm *tracingMiddleware) Issue(ctx context.Context, token string, key auth.Key) (auth.Key, auth.Token, error) {
 	ctx, span := tm.tracer.Start(ctx, "issue", trace.WithAttributes(
 		attribute.String("type", fmt.Sprintf("%d", key.Type)),
 		attribute.String("subject", key.Subject),
