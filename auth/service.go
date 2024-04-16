@@ -495,14 +495,20 @@ func (svc service) checkUserDomain(ctx context.Context, key Key) (subject string
 }
 
 func (svc service) userKey(ctx context.Context, token string, key Key) (Key, Token, error) {
-	id, sub, err := svc.authenticate(token)
+	loginKey, err := svc.tokenizer.Parse(token)
 	if err != nil {
-		return Key{}, Token{}, errors.Wrap(errIssueUser, err)
+		return Key{}, Token{}, errors.Wrap(errRetrieve, err)
 	}
+	// Only login key token is valid for login.
+	if key.Type != AccessKey || key.Issuer == "" {
+		return Key{}, Token{}, svcerr.ErrAuthentication
+	}
+	key.User = loginKey.User
+	key.Domain = loginKey.Domain
+	key.Issuer = loginKey.Issuer
 
-	key.Issuer = id
 	if key.Subject == "" {
-		key.Subject = sub
+		key.Subject = loginKey.Subject
 	}
 
 	keyID, err := svc.idProvider.ID()
