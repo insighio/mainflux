@@ -500,7 +500,7 @@ func (svc service) userKey(ctx context.Context, token string, key Key) (Key, Tok
 		return Key{}, Token{}, errors.Wrap(errRetrieve, err)
 	}
 	// Only login key token is valid for login.
-	if key.Type != AccessKey || key.Issuer == "" {
+	if loginKey.Type != AccessKey || loginKey.Issuer == "" {
 		return Key{}, Token{}, svcerr.ErrAuthentication
 	}
 	key.User = loginKey.User
