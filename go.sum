@@ -233,6 +233,8 @@ github.com/influxdata/influxdb-client-go/v2 v2.13.0 h1:ioBbLmR5NMbAjP4UVA5r9b5xG
 github.com/influxdata/influxdb-client-go/v2 v2.13.0/go.mod h1:k+spCbt9hcvqvUiz0sr5D8LolXHqAAOfPw9v/RIRHl4=
 github.com/influxdata/line-protocol v0.0.0-20210922203350-b1ad95c89adf h1:7JTmneyiNEwVBOHSjoMxiWAqB992atOeepeFYegn5RU=
 github.com/influxdata/line-protocol v0.0.0-20210922203350-b1ad95c89adf/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
+github.com/insighio/mproxy v1.0.0 h1:e2MYsoX5J+tsWJJ4ShR2Ifap614Zz/xyIjqGyE7Hdf4=
+github.com/insighio/mproxy v1.0.0/go.mod h1:TeXhbHdjihXLVoohSzxvIEFzWu16WDOa91LNduks/N8=
 github.com/insighio/senml v1.2.0 h1:+A7eZA9KYvqFAcwZ7sU6QhqDb36h/ftuGHdkjNDMLpY=
 github.com/insighio/senml v1.2.0/go.mod h1:AYuy6Qkl2npt6GVdlDnLB+AxTpeGtj802AsHXCfrcYc=
 github.com/ivanpirog/coloredcobra v1.0.1 h1:aURSdEmlR90/tSiWS0dMjdwOvCVUeYLfltLfbgNxrN4=
