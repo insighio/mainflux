@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/absmach/magistrala"
+	"github.com/absmach/magistrala/auth"
 	"github.com/absmach/magistrala/pkg/errors"
 	svcerr "github.com/absmach/magistrala/pkg/errors/service"
 	mgsdk "github.com/absmach/magistrala/pkg/sdk/go"
@@ -51,7 +52,7 @@ var _ Service = (*bootstrapService)(nil)
 // implementation, and all of its decorators (e.g. logging & metrics).
 type Service interface {
 	// Add adds new Thing Config to the user identified by the provided token.
-	Add(ctx context.Context, token string, cfg Config) (Config, error)
+	Add(ctx context.Context, token string, cfg Config, ownerID string) (Config, error)
 
 	// View returns Thing Config with given ID belonging to the user identified by the given token.
 	View(ctx context.Context, token, id string) (Config, error)
@@ -120,10 +121,24 @@ func New(auth magistrala.AuthServiceClient, configs ConfigRepository, sdk mgsdk.
 	}
 }
 
-func (bs bootstrapService) Add(ctx context.Context, token string, cfg Config) (Config, error) {
+func (bs bootstrapService) Add(ctx context.Context, token string, cfg Config, ownerID string) (Config, error) {
 	owner, err := bs.identify(ctx, token)
 	if err != nil {
 		return Config{}, errors.Wrap(svcerr.ErrAuthentication, err)
+	}
+
+	// If the user is a super admin and an explicit ownerID is set,
+	// use that ownerID. This is particularly useful during migration,
+	// where we use a super admin to create legacy bootstrap configurations
+	identityInfo, err := bs.identifyAndRetrieveFullIdentity(ctx, token)
+	if err != nil {
+		return Config{}, errors.Wrap(svcerr.ErrAuthentication, err)
+	}
+
+	if err := bs.checkSuperAdmin(ctx, identityInfo.GetUserId()); err == nil {
+		if ownerID != "" {
+			owner = ownerID + "_" + identityInfo.GetDomainId()
+		}
 	}
 
 	toConnect := bs.toIDList(cfg.Channels)
@@ -378,6 +393,39 @@ func (bs bootstrapService) identify(ctx context.Context, token string) (string, 
 	}
 
 	return res.GetId(), nil
+}
+
+func (bs bootstrapService) identifyAndRetrieveFullIdentity(ctx context.Context, token string) (*magistrala.IdentityRes, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	res, err := bs.auth.Identify(ctx, &magistrala.IdentityReq{Token: token})
+	if err != nil {
+		return &magistrala.IdentityRes{}, errors.Wrap(svcerr.ErrAuthentication, err)
+	}
+
+	return res, nil
+}
+
+func (bs bootstrapService) checkSuperAdmin(ctx context.Context, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	res, err := bs.auth.Authorize(ctx, &magistrala.AuthorizeReq{
+		SubjectType: auth.UserType,
+		Subject:     userID,
+		Permission:  auth.AdminPermission,
+		ObjectType:  auth.PlatformType,
+		Object:      auth.MagistralaObject,
+	})
+	if err != nil {
+		return err
+	}
+	if !res.Authorized {
+		return errors.ErrAuthorization
+	}
+
+	return nil
 }
 
 // Method thing retrieves Magistrala Thing creating one if an empty ID is passed.

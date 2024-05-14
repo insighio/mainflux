@@ -21,6 +21,7 @@ type addReq struct {
 	ClientCert  string   `json:"client_cert"`
 	ClientKey   string   `json:"client_key"`
 	CACert      string   `json:"ca_cert"`
+	OwnerID     string   `json:"owner_id"`
 }
 
 func (req addReq) validate() error {

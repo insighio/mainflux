@@ -31,13 +31,13 @@ func MetricsMiddleware(svc bootstrap.Service, counter metrics.Counter, latency m
 }
 
 // Add instruments Add method with metrics.
-func (mm *metricsMiddleware) Add(ctx context.Context, token string, cfg bootstrap.Config) (saved bootstrap.Config, err error) {
+func (mm *metricsMiddleware) Add(ctx context.Context, token string, cfg bootstrap.Config, ownerID string) (saved bootstrap.Config, err error) {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "add").Add(1)
 		mm.latency.With("method", "add").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mm.svc.Add(ctx, token, cfg)
+	return mm.svc.Add(ctx, token, cfg, ownerID)
 }
 
 // View instruments View method with metrics.

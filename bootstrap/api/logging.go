@@ -27,7 +27,7 @@ func LoggingMiddleware(svc bootstrap.Service, logger *slog.Logger) bootstrap.Ser
 
 // Add logs the add request. It logs the thing ID and the time it took to complete the request.
 // If the request fails, it logs the error.
-func (lm *loggingMiddleware) Add(ctx context.Context, token string, cfg bootstrap.Config) (saved bootstrap.Config, err error) {
+func (lm *loggingMiddleware) Add(ctx context.Context, token string, cfg bootstrap.Config, ownerID string) (saved bootstrap.Config, err error) {
 	defer func(begin time.Time) {
 		args := []any{
 			slog.String("duration", time.Since(begin).String()),
@@ -41,7 +41,7 @@ func (lm *loggingMiddleware) Add(ctx context.Context, token string, cfg bootstra
 		lm.logger.Info("Add new bootstrap completed successfully", args...)
 	}(time.Now())
 
-	return lm.svc.Add(ctx, token, cfg)
+	return lm.svc.Add(ctx, token, cfg, ownerID)
 }
 
 // View logs the view request. It logs the thing ID and the time it took to complete the request.
@@ -76,10 +76,10 @@ func (lm *loggingMiddleware) Update(ctx context.Context, token string, cfg boots
 		}
 		if err != nil {
 			args = append(args, slog.Any("error", err))
-			lm.logger.Warn("Update boostrap config failed to complete successfully", args...)
+			lm.logger.Warn("Update bootstrap config failed to complete successfully", args...)
 			return
 		}
-		lm.logger.Info("Update boostrap config completed successfully", args...)
+		lm.logger.Info("Update bootstrap config completed successfully", args...)
 	}(time.Now())
 
 	return lm.svc.Update(ctx, token, cfg)

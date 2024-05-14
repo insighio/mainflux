@@ -26,8 +26,8 @@ func NewEventStoreMiddleware(svc bootstrap.Service, publisher events.Publisher) 
 	}
 }
 
-func (es *eventStore) Add(ctx context.Context, token string, cfg bootstrap.Config) (bootstrap.Config, error) {
-	saved, err := es.svc.Add(ctx, token, cfg)
+func (es *eventStore) Add(ctx context.Context, token string, cfg bootstrap.Config, ownerID string) (bootstrap.Config, error) {
+	saved, err := es.svc.Add(ctx, token, cfg, ownerID)
 	if err != nil {
 		return saved, err
 	}

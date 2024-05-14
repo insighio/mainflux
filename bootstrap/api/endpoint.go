@@ -36,7 +36,7 @@ func addEndpoint(svc bootstrap.Service) endpoint.Endpoint {
 			Content:     req.Content,
 		}
 
-		saved, err := svc.Add(ctx, req.token, config)
+		saved, err := svc.Add(ctx, req.token, config, req.OwnerID)
 		if err != nil {
 			return nil, err
 		}
