@@ -137,7 +137,7 @@ func (bs bootstrapService) Add(ctx context.Context, token string, cfg Config, ow
 
 	if err := bs.checkSuperAdmin(ctx, identityInfo.GetUserId()); err == nil {
 		if ownerID != "" {
-			owner = ownerID + "_" + identityInfo.GetDomainId()
+			owner = identityInfo.GetDomainId() + "_" + ownerID
 		}
 	}
 
