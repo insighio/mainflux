@@ -90,7 +90,7 @@ func MakeHandler(svc bootstrap.Service, reader bootstrap.ConfigReader, logger *s
 				opts...), "update_connections").ServeHTTP)
 		})
 
-		r.Route("/bootstrap", func(r chi.Router) {
+		r.Route("/bootstraps", func(r chi.Router) {
 			r.Get("/", otelhttp.NewHandler(kithttp.NewServer(
 				bootstrapEndpoint(svc, reader, false),
 				decodeBootstrapRequest,
