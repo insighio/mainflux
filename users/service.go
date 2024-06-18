@@ -334,6 +334,7 @@ func (svc service) ResetSecret(ctx context.Context, resetToken, secret string) e
 		return err
 	}
 	c = mgclients.Client{
+		ID: id,
 		Credentials: mgclients.Credentials{
 			Identity: c.Credentials.Identity,
 			Secret:   secret,
