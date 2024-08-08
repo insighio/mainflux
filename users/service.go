@@ -225,6 +225,7 @@ func (svc service) UpdateClient(ctx context.Context, token string, cli mgclients
 	if err != nil {
 		return mgclients.Client{}, errors.Wrap(svcerr.ErrUpdateEntity, err)
 	}
+	client.Credentials.Secret = ""
 	return client, nil
 }
 
