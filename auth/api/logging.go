@@ -365,6 +365,21 @@ func (lm *loggingMiddleware) CreateDomain(ctx context.Context, token string, d a
 	return lm.svc.CreateDomain(ctx, token, d)
 }
 
+func (lm *loggingMiddleware) RetrieveDomainFromToken(ctx context.Context, token string) (do auth.Domain, err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Retrieve domain from token failed to complete successfully", args...)
+			return
+		}
+		lm.logger.Info("Retrieve domain from token completed successfully", args...)
+	}(time.Now())
+	return lm.svc.RetrieveDomainFromToken(ctx, token)
+}
+
 func (lm *loggingMiddleware) RetrieveDomain(ctx context.Context, token, id string) (do auth.Domain, err error) {
 	defer func(begin time.Time) {
 		args := []any{

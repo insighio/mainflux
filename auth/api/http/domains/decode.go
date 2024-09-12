@@ -30,6 +30,13 @@ func decodeCreateDomainRequest(_ context.Context, r *http.Request) (interface{},
 	return req, nil
 }
 
+func decodeRetrieveDomainFromTokenRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	req := retrieveDomainFromTokenReq{
+		token: apiutil.ExtractBearerToken(r),
+	}
+	return req, nil
+}
+
 func decodeRetrieveDomainRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	req := retrieveDomainRequest{
 		token:    apiutil.ExtractBearerToken(r),
