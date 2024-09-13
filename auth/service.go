@@ -603,7 +603,21 @@ func (svc service) RetrieveDomainFromToken(ctx context.Context, token string) (D
 	if key.Domain == "" {
 		return Domain{}, errors.Wrap(svcerr.ErrAuthorization, errors.ErrDomainAuthorization)
 	}
-	return svc.RetrieveDomain(ctx, token, key.Domain)
+	domain, err := svc.RetrieveDomain(ctx, token, key.Domain)
+	if err != nil {
+		return Domain{}, errors.Wrap(svcerr.ErrNotFound, err)
+	}
+	lp, err := svc.ListPermissions(ctx, PolicyReq{
+		SubjectType: UserType,
+		Subject:     key.Subject,
+		Object:      domain.ID,
+		ObjectType:  DomainType,
+	}, []string{AdminPermission, EditPermission, ViewPermission, MembershipPermission})
+	if err != nil {
+		return Domain{}, err
+	}
+	domain.Permission = lp[0]
+	return domain, nil
 }
 
 func (svc service) RetrieveDomain(ctx context.Context, token, id string) (Domain, error) {
