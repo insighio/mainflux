@@ -125,6 +125,7 @@ func (repo *influxRepo) senmlPoints(messages interface{}) ([]*write.Point, error
 	if !ok {
 		return nil, errSaveMessage
 	}
+	var now = time.Now()
 	var pts []*write.Point
 	for _, msg := range msgs {
 		tgs, flds := senmlTags(msg), senmlFields(msg)
@@ -132,7 +133,7 @@ func (repo *influxRepo) senmlPoints(messages interface{}) ([]*write.Point, error
 		sec, dec := math.Modf(msg.Time)
 		t := time.Unix(int64(sec), int64(dec*(1e9)))
 		if sec == 0 && dec == 0 {
-			t = time.Now()
+			t = now
 		}
 		var customSenmlPoint = strings.Replace(senmlPoints+msg.Channel, "-", "_", -1)
 
