@@ -595,6 +595,31 @@ func (svc service) CreateDomain(ctx context.Context, token string, d Domain) (do
 	return dom, nil
 }
 
+func (svc service) RetrieveDomainFromToken(ctx context.Context, token string) (Domain, error) {
+	key, err := svc.Identify(ctx, token)
+	if err != nil {
+		return Domain{}, errors.Wrap(svcerr.ErrAuthentication, err)
+	}
+	if key.Domain == "" {
+		return Domain{}, errors.Wrap(svcerr.ErrAuthorization, errors.ErrDomainAuthorization)
+	}
+	domain, err := svc.RetrieveDomain(ctx, token, key.Domain)
+	if err != nil {
+		return Domain{}, errors.Wrap(svcerr.ErrNotFound, err)
+	}
+	lp, err := svc.ListPermissions(ctx, PolicyReq{
+		SubjectType: UserType,
+		Subject:     key.Subject,
+		Object:      domain.ID,
+		ObjectType:  DomainType,
+	}, []string{AdminPermission, EditPermission, ViewPermission, MembershipPermission})
+	if err != nil {
+		return Domain{}, err
+	}
+	domain.Permission = lp[0]
+	return domain, nil
+}
+
 func (svc service) RetrieveDomain(ctx context.Context, token, id string) (Domain, error) {
 	if err := svc.Authorize(ctx, PolicyReq{
 		Subject:     token,

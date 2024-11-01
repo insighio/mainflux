@@ -33,6 +33,21 @@ func createDomainEndpoint(svc auth.Service) endpoint.Endpoint {
 	}
 }
 
+func retrieveDomainFromTokenEndpoint(svc auth.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(retrieveDomainFromTokenReq)
+		if err := req.validate(); err != nil {
+			return nil, err
+		}
+
+		domain, err := svc.RetrieveDomainFromToken(ctx, req.token)
+		if err != nil {
+			return nil, err
+		}
+		return retrieveDomainRes{Data: domain}, nil
+	}
+}
+
 func retrieveDomainEndpoint(svc auth.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(retrieveDomainRequest)

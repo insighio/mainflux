@@ -143,6 +143,7 @@ type Policy struct {
 
 type Domains interface {
 	CreateDomain(ctx context.Context, token string, d Domain) (Domain, error)
+	RetrieveDomainFromToken(ctx context.Context, token string) (Domain, error)
 	RetrieveDomain(ctx context.Context, token string, id string) (Domain, error)
 	RetrieveDomainPermissions(ctx context.Context, token string, id string) (Permissions, error)
 	UpdateDomain(ctx context.Context, token string, id string, d DomainReq) (Domain, error)

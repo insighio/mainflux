@@ -185,6 +185,14 @@ func (ms *metricsMiddleware) CreateDomain(ctx context.Context, token string, d a
 	return ms.svc.CreateDomain(ctx, token, d)
 }
 
+func (ms *metricsMiddleware) RetrieveDomainFromToken(ctx context.Context, token string) (auth.Domain, error) {
+	defer func(begin time.Time) {
+		ms.counter.With("method", "retrieve_domain_from_token").Add(1)
+		ms.latency.With("method", "retrieve_domain_from_token").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return ms.svc.RetrieveDomainFromToken(ctx, token)
+}
+
 func (ms *metricsMiddleware) RetrieveDomain(ctx context.Context, token, id string) (auth.Domain, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "retrieve_domain").Add(1)

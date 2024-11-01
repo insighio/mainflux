@@ -39,6 +39,18 @@ func (req createDomainReq) validate() error {
 	return nil
 }
 
+type retrieveDomainFromTokenReq struct {
+	token string
+}
+
+func (req retrieveDomainFromTokenReq) validate() error {
+	if req.token == "" {
+		return apiutil.ErrBearerToken
+	}
+
+	return nil
+}
+
 type retrieveDomainRequest struct {
 	token    string
 	domainID string
