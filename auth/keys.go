@@ -35,14 +35,14 @@ const (
 	AccessKey KeyType = iota
 	// RefreshKey is a temporary User key used to generate a new access key.
 	RefreshKey
-	// RecoveryKey represents a key for resseting password.
+	// RecoveryKey represents a key for resetting password.
 	RecoveryKey
 	// APIKey enables the one to act on behalf of the user.
 	APIKey
-	// Verification Key for verifying registration email
-	EmailVerificationKey
 	// InvitationKey is a key for inviting new users.
 	InvitationKey
+	// Verification Key for verifying registration email
+	EmailVerificationKey
 )
 
 func (kt KeyType) String() string {
