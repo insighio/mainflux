@@ -114,12 +114,9 @@ func main() {
 		return
 	}
 
-	vec := email.Config{Template: emailVerifyTmpl}
-	if err := env.Parse(&vec); err != nil {
-		logger.Error(fmt.Sprintf("failed to load email verification configuration : %s", err.Error()))
-		exitCode = 1
-		return
-	}
+	// Email verification template
+	vec := ec
+	vec.Template = emailVerifyTmpl
 
 	dbConfig := pgclient.Config{Name: defDB}
 	if err := env.ParseWithOptions(&dbConfig, env.Options{Prefix: envPrefixDB}); err != nil {
