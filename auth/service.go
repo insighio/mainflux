@@ -45,15 +45,16 @@ var (
 	// ErrExpiry indicates that the token is expired.
 	ErrExpiry = errors.New("token is expired")
 
-	errIssueUser          = errors.New("failed to issue new login key")
-	errIssueTmp           = errors.New("failed to issue new temporary key")
-	errRevoke             = errors.New("failed to remove key")
-	errRetrieve           = errors.New("failed to retrieve key data")
-	errIdentify           = errors.New("failed to validate token")
-	errPlatform           = errors.New("invalid platform id")
-	errCreateDomainPolicy = errors.New("failed to create domain policy")
-	errAddPolicies        = errors.New("failed to add policies")
-	errRemovePolicies     = errors.New("failed to remove the policies")
+	errIssueUser             = errors.New("failed to issue new login key")
+	errIssueTmp              = errors.New("failed to issue new temporary key")
+	errRevoke                = errors.New("failed to remove key")
+	errRetrieve              = errors.New("failed to retrieve key data")
+	errIdentify              = errors.New("failed to validate token")
+	errPlatform              = errors.New("invalid platform id")
+	errCreateDomainPolicy    = errors.New("failed to create domain policy")
+	errAddPolicies           = errors.New("failed to add policies")
+	errRemovePolicies        = errors.New("failed to remove the policies")
+	errUnassignDomainCreator = errors.New("Cannot unassign the domain creator")
 )
 
 // Authn specifies an API that must be fullfiled by the domain service
@@ -799,6 +800,17 @@ func (svc service) UnassignUsers(ctx context.Context, token, id string, userIds 
 		Permission:  SwitchToPermission(relation),
 	}); err != nil {
 		return err
+	}
+
+	domain, err := svc.RetrieveDomainFromToken(ctx, token)
+	if err != nil {
+		return err
+	}
+	// If the domain creator is in the list of users to be unassigned, return forbidden
+	for _, userID := range userIds {
+		if domain.CreatedBy == userID {
+			return errors.Wrap(svcerr.ErrAuthorization, errUnassignDomainCreator)
+		}
 	}
 
 	if err := svc.removeDomainPolicies(ctx, id, relation, userIds...); err != nil {
