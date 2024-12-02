@@ -207,7 +207,13 @@ func (svc service) UpdateClient(ctx context.Context, token string, cli mgclients
 		return mgclients.Client{}, err
 	}
 
-	if tokenUserID != cli.ID {
+	// Only superusers can update other users, their plans and the verified flag via this endpoint
+	dbClient, err := svc.clients.RetrieveByID(ctx, cli.ID)
+	if err != nil {
+		return mgclients.Client{}, errors.Wrap(repoerr.ErrNotFound, err)
+	}
+
+	if tokenUserID != cli.ID || dbClient.Metadata["plan"] != cli.Metadata["plan"] || dbClient.Metadata["verified"] != cli.Metadata["verified"] {
 		if err := svc.checkSuperAdmin(ctx, tokenUserID); err != nil {
 			return mgclients.Client{}, err
 		}
