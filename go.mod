@@ -187,4 +187,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/absmach/mproxy => github.com/insighio/mproxy v1.0.2
+replace github.com/absmach/mproxy => github.com/insighio/mproxy v1.0.3
