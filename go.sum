@@ -239,6 +239,8 @@ github.com/insighio/mproxy v1.0.2 h1:OMSiXUoWIu4B3yVu0R2kAstfAHf46bfjrO4MNc+Z+rw
 github.com/insighio/mproxy v1.0.2/go.mod h1:TeXhbHdjihXLVoohSzxvIEFzWu16WDOa91LNduks/N8=
 github.com/insighio/mproxy v1.0.3 h1:Hg0I8xaDB1Y45N8NdGFZ+RmNKQjXtLkMb47htCRJLLs=
 github.com/insighio/mproxy v1.0.3/go.mod h1:TeXhbHdjihXLVoohSzxvIEFzWu16WDOa91LNduks/N8=
+github.com/insighio/mproxy v1.0.5 h1:+hcUvTkli0ir4Lolj7aU7qXvRbqgelxyKAoLnH05vAQ=
+github.com/insighio/mproxy v1.0.5/go.mod h1:TeXhbHdjihXLVoohSzxvIEFzWu16WDOa91LNduks/N8=
 github.com/insighio/senml v1.2.0 h1:+A7eZA9KYvqFAcwZ7sU6QhqDb36h/ftuGHdkjNDMLpY=
 github.com/insighio/senml v1.2.0/go.mod h1:AYuy6Qkl2npt6GVdlDnLB+AxTpeGtj802AsHXCfrcYc=
 github.com/ivanpirog/coloredcobra v1.0.1 h1:aURSdEmlR90/tSiWS0dMjdwOvCVUeYLfltLfbgNxrN4=
