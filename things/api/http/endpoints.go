@@ -426,8 +426,9 @@ func authorizeEndpoint(svc things.Service) endpoint.Endpoint {
 		}
 
 		r := &magistrala.AuthorizeReq{
-			Subject:    req.thingID,
-			Permission: auth.ViewPermission,
+			Subject:    req.thingKey,
+			Object:     req.channelID,
+			Permission: auth.PublishPermission,
 		}
 
 		_, err := svc.Authorize(ctx, r)
