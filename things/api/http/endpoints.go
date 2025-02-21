@@ -6,6 +6,7 @@ package http
 import (
 	"context"
 
+	"github.com/absmach/magistrala"
 	"github.com/absmach/magistrala/auth"
 	"github.com/absmach/magistrala/internal/apiutil"
 	mgclients "github.com/absmach/magistrala/pkg/clients"
@@ -414,5 +415,26 @@ func deleteClientEndpoint(svc things.Service) endpoint.Endpoint {
 		}
 
 		return deleteClientRes{}, nil
+	}
+}
+
+func authorizeEndpoint(svc things.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(authorizeReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		r := &magistrala.AuthorizeReq{
+			Subject:    req.thingID,
+			Permission: auth.ViewPermission,
+		}
+
+		_, err := svc.Authorize(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+
+		return authorizeRes{}, nil
 	}
 }

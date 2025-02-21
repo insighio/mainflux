@@ -115,6 +115,13 @@ func clientsHandler(svc things.Service, r *chi.Mux, logger *slog.Logger) http.Ha
 			api.EncodeResponse,
 			opts...,
 		), "delete_thing").ServeHTTP)
+
+		r.Post("/{thingID}/channels/{channelID}/authorize", otelhttp.NewHandler(kithttp.NewServer(
+			authorizeEndpoint(svc),
+			decodeAuthorizeReq,
+			api.EncodeResponse,
+			opts...,
+		), "authorize_thing_channel_access").ServeHTTP)
 	})
 
 	// Ideal location: things service,  channels endpoint
@@ -377,6 +384,16 @@ func decodeDeleteClientReq(_ context.Context, r *http.Request) (interface{}, err
 	req := deleteClientReq{
 		token: apiutil.ExtractBearerToken(r),
 		id:    chi.URLParam(r, "thingID"),
+	}
+
+	return req, nil
+}
+
+func decodeAuthorizeReq(_ context.Context, r *http.Request) (interface{}, error) {
+	req := authorizeReq{
+		thingID:   chi.URLParam(r, "thingID"),
+		thingKey:  apiutil.ExtractThingKey(r),
+		channelID: chi.URLParam(r, "groupID"),
 	}
 
 	return req, nil
