@@ -116,7 +116,7 @@ func clientsHandler(svc things.Service, r *chi.Mux, logger *slog.Logger) http.Ha
 			opts...,
 		), "delete_thing").ServeHTTP)
 
-		r.Post("/{thingID}/channels/{channelID}/authorize", otelhttp.NewHandler(kithttp.NewServer(
+		r.Post("/{thingID}/channels/{groupID}/authorize", otelhttp.NewHandler(kithttp.NewServer(
 			authorizeEndpoint(svc),
 			decodeAuthorizeReq,
 			api.EncodeResponse,
