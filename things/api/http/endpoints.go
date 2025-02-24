@@ -6,10 +6,12 @@ package http
 import (
 	"context"
 
+	"github.com/absmach/magistrala"
 	"github.com/absmach/magistrala/auth"
 	"github.com/absmach/magistrala/internal/apiutil"
 	mgclients "github.com/absmach/magistrala/pkg/clients"
 	"github.com/absmach/magistrala/pkg/errors"
+	svcerr "github.com/absmach/magistrala/pkg/errors/service"
 	"github.com/absmach/magistrala/pkg/groups"
 	"github.com/absmach/magistrala/things"
 	"github.com/go-kit/kit/endpoint"
@@ -414,5 +416,34 @@ func deleteClientEndpoint(svc things.Service) endpoint.Endpoint {
 		}
 
 		return deleteClientRes{}, nil
+	}
+}
+
+func authorizeEndpoint(svc things.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(authorizeReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		r := &magistrala.AuthorizeReq{
+			Subject:    req.thingKey,
+			Object:     req.channelID,
+			Permission: auth.PublishPermission,
+		}
+
+		thingID, err := svc.Authorize(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+
+		// Authorize only checks the thing key. We need to check if the
+		// thingID is the same as the one in the request.
+		// If not, return an authorization error.
+		if thingID != req.thingID {
+			return nil, svcerr.ErrAuthorization
+		}
+
+		return authorizeRes{}, nil
 	}
 }

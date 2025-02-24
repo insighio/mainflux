@@ -308,3 +308,17 @@ func (res thingUnshareRes) Headers() map[string]string {
 func (res thingUnshareRes) Empty() bool {
 	return true
 }
+
+type authorizeRes struct{}
+
+func (res authorizeRes) Code() int {
+	return http.StatusOK
+}
+
+func (res authorizeRes) Headers() map[string]string {
+	return map[string]string{}
+}
+
+func (res authorizeRes) Empty() bool {
+	return false
+}

@@ -376,3 +376,16 @@ func (req deleteClientReq) validate() error {
 	}
 	return nil
 }
+
+type authorizeReq struct {
+	thingID   string
+	thingKey  string
+	channelID string
+}
+
+func (req authorizeReq) validate() error {
+	if req.thingID == "" || req.thingKey == "" || req.channelID == "" {
+		return errors.ErrMalformedEntity
+	}
+	return nil
+}
