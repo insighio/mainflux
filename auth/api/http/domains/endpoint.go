@@ -85,13 +85,14 @@ func updateDomainEndpoint(svc auth.Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		var metadata clients.Metadata
+		var metadata *clients.Metadata
 		if req.Metadata != nil {
-			metadata = *req.Metadata
+			convertedMetadata := clients.Metadata(*req.Metadata)
+			metadata = &convertedMetadata
 		}
 		d := auth.DomainReq{
 			Name:     req.Name,
-			Metadata: &metadata,
+			Metadata: metadata,
 			Tags:     req.Tags,
 			Alias:    req.Alias,
 		}
