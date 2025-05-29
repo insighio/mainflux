@@ -234,7 +234,6 @@ func (repo domainRepo) ListDomains(ctx context.Context, pm auth.Page) (auth.Doma
 func (repo domainRepo) Update(ctx context.Context, id, userID string, dr auth.DomainReq) (auth.Domain, error) {
 	var query []string
 	var upq string
-	var ws string = "AND status = :status"
 	d := auth.Domain{ID: id}
 	if dr.Name != nil && *dr.Name != "" {
 		query = append(query, "name = :name, ")
@@ -249,7 +248,6 @@ func (repo domainRepo) Update(ctx context.Context, id, userID string, dr auth.Do
 		d.Tags = *dr.Tags
 	}
 	if dr.Status != nil {
-		ws = ""
 		query = append(query, "status = :status, ")
 		d.Status = *dr.Status
 	}
@@ -263,9 +261,9 @@ func (repo domainRepo) Update(ctx context.Context, id, userID string, dr auth.Do
 		upq = strings.Join(query, " ")
 	}
 	q := fmt.Sprintf(`UPDATE domains SET %s  updated_at = :updated_at, updated_by = :updated_by
-        WHERE id = :id %s
+        WHERE id = :id
         RETURNING id, name, tags, alias, metadata, created_at, updated_at, updated_by, created_by, status;`,
-		upq, ws)
+		upq)
 
 	dbd, err := toDBDomain(d)
 	if err != nil {
